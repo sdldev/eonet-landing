@@ -1,0 +1,222 @@
+---
+const packages = [
+    { package: "Small", price: "179", speed: "20 Mbps", devices: "3-5" },
+    { package: "Basic", price: "199", speed: "30 Mbps", devices: "4-7" },
+    { package: "Medium", price: "235", speed: "35 Mbps", devices: "5-8" },
+    { package: "Office", price: "285", speed: "45 Mbps", devices: "7-10" },
+    { package: "Soho", price: "345", speed: "65 Mbps", devices: "8-12" },
+    { package: "Enterprise", price: "645", speed: "100 Mbps", devices: "11-14" },
+];
+---
+
+<section id="packages" class="packages-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">
+                Pilihan Paket <span class="text-gradient">Internet</span>
+            </h2>
+            <p class="section-subtitle">
+                Sesuaikan dengan kebutuhan aktivitas digital Anda
+            </p>
+        </div>
+
+        <div class="packages-grid">
+            {
+                packages.map((pkg) => (
+                    <div class="package-card glass">
+                        <div class="card-header">
+                            <h3 class="package-name">Paket {pkg.package}</h3>
+                            <div class="speed-badge">up to {pkg.speed}</div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="price-container">
+                                <span class="currency">Rp</span>
+                                <span class="amount">{pkg.price}</span>
+                                <span class="period">/bln</span>
+                            </div>
+
+                            <ul class="features-list">
+                                <li>
+                                    <span class="icon">Devices</span>
+                                    {pkg.devices} Perangkat
+                                </li>
+                                <li>
+                                    <span class="icon">Speed</span>
+                                    Real Unlimited
+                                </li>
+                                <li>
+                                    <span class="icon">Support</span>
+                                    24/7 Bantuan
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="card-footer">
+                            <a
+                                href={`https://wa.me/6289624424649?text=Halo%20Admin,%20saya%20tertarik%20dengan%20Paket%20${pkg.price}`}
+                                class="btn btn-outline-primary full-width"
+                            >
+                                Pilih Paket
+                            </a>
+                        </div>
+                    </div>
+                ))
+            }
+        </div>
+    </div>
+</section>
+
+<style>
+    .packages-section {
+        padding: 80px 0;
+        background: linear-gradient(
+            180deg,
+            var(--color-bg-dark) 0%,
+            #15161b 100%
+        );
+    }
+
+    .section-header {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+
+    .section-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+
+    .section-subtitle {
+        color: var(--color-text-muted);
+    }
+
+    .packages-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .package-card {
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        transition:
+            transform 0.3s ease,
+            box-shadow 0.3s ease,
+            background 0.3s ease,
+            border-color 0.3s ease;
+
+        /* Enhanced Glassmorphism */
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .package-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 40px -10px rgba(107, 70, 193, 0.3);
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .package-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .speed-badge {
+        background: rgba(243, 111, 33, 0.15);
+        color: var(--color-accent);
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .price-container {
+        display: flex;
+        align-items: baseline;
+        margin-bottom: 2rem;
+    }
+
+    .currency {
+        font-size: 1rem;
+        color: var(--color-text-muted);
+        margin-right: 0.25rem;
+    }
+
+    .amount {
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1;
+        background: linear-gradient(to right, white, #e2e8f0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .period {
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+        margin-left: 0.25rem;
+    }
+
+    .features-list {
+        list-style: none;
+        margin-bottom: 2rem;
+    }
+
+    .features-list li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
+    }
+
+    .features-list li .icon {
+        margin-right: 0.75rem;
+        width: 20px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0;
+    }
+
+    .features-list li .icon::after {
+        content: "✓";
+        font-size: 0.7rem;
+        color: var(--color-primary);
+    }
+
+    .full-width {
+        width: 100%;
+        display: block;
+        text-align: center;
+    }
+
+    .btn-outline-primary {
+        background: transparent;
+        border: 1px solid var(--color-primary);
+        color: white;
+        padding: 0.75rem;
+        border-radius: var(--radius-md);
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-primary:hover {
+        background: var(--color-primary);
+        box-shadow: 0 4px 14px 0 rgba(118, 75, 162, 0.39);
+    }
+</style>
