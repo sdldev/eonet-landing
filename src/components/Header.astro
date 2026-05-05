@@ -4,8 +4,8 @@
 
 <header class="header">
     <div class="container header-container">
-        <div class="logo">
-            <span class="logo-icon">
+        <a href="#home" class="logo" aria-label="EONET Connection">
+            <span class="logo-icon" aria-hidden="true">
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -20,13 +20,15 @@
             <span class="logo-text"
                 >EONET <span class="logo-sub">CONNECTION</span></span
             >
-        </div>
+        </a>
 
         <nav class="nav">
             <a href="#home" class="nav-link">Home</a>
             <a href="#packages" class="nav-link">Paket Internet</a>
             <a href="#features" class="nav-link">Fitur</a>
-            <a href="#contact" class="btn btn-primary">Hubungi Kami</a>
+            <a href="#contact" class="btn btn-secondary header-cta"
+                >Hubungi Kami</a
+            >
         </nav>
     </div>
 </header>
@@ -38,60 +40,94 @@
         left: 0;
         width: 100%;
         z-index: 1000;
-        background: rgba(15, 16, 20, 0.8);
-        backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(7, 18, 35, 0.82);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--border-soft);
     }
 
     .header-container {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        height: 80px;
+        gap: 1rem;
+        min-height: 76px;
+        padding-block: 0.85rem;
     }
 
     .logo {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        color: white;
+        gap: 0.65rem;
+        color: var(--text-50);
         font-weight: 700;
-        font-size: 1.5rem;
+        font-size: 1.15rem;
     }
 
     .logo-icon {
-        color: var(--color-primary);
-        width: 32px;
-        height: 32px;
+        color: var(--accent-400);
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+    }
+
+    .logo-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1;
     }
 
     .logo-sub {
-        font-size: 0.8rem;
-        font-weight: 400;
-        color: var(--color-text-muted);
-        display: block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        color: var(--text-300);
+        text-transform: uppercase;
         line-height: 1;
     }
 
     .nav {
         display: flex;
         align-items: center;
-        gap: 2rem;
+        gap: 0.65rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     .nav-link {
-        color: var(--color-text-muted);
-        transition: color 0.3s ease;
+        color: var(--text-200);
+        transition:
+            color var(--transition-base),
+            background-color var(--transition-base);
         font-weight: 500;
+        font-size: 0.95rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 999px;
     }
 
     .nav-link:hover {
-        color: white;
+        color: var(--text-50);
+        background: rgba(151, 174, 200, 0.12);
+    }
+
+    .header-cta {
+        white-space: nowrap;
     }
 
     @media (max-width: 768px) {
+        .header-container {
+            min-height: 70px;
+        }
+
         .nav-link {
             display: none;
+        }
+
+        .logo {
+            font-size: 1rem;
+        }
+
+        .header-cta {
+            padding-inline: 0.95rem;
         }
     }
 </style>

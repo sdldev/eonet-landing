@@ -2,10 +2,19 @@
 
 ---
 
-<section id="features" class="features-section">
+<section id="features" class="features-section section">
     <div class="container">
+        <div class="section-header">
+            <div class="eyebrow">Trust & coverage</div>
+            <h2 class="section-title">Lebih jelas sebelum pasang</h2>
+            <p class="section-subtitle">
+                EONET membantu Anda memilih paket dari website, lalu memastikan
+                detail area, biaya, dan langkah pemasangan lewat WhatsApp resmi.
+            </p>
+        </div>
+
         <div class="features-grid">
-            <div class="feature-item">
+            <div class="feature-item surface-panel">
                 <div class="feature-icon">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -22,14 +31,15 @@
                         ></path>
                     </svg>
                 </div>
-                <h3 class="feature-title">Kecepatan 1:1</h3>
+                <h3 class="feature-title">Koneksi stabil untuk aktivitas harian</h3>
                 <p class="feature-desc">
-                    Nikmati kecepatan upload dan download yang simetris untuk
-                    pengalaman internet yang lebih lancar.
+                    Dirancang untuk kebutuhan rumah dan usaha seperti meeting,
+                    belajar online, streaming, dan gaming sesuai kondisi jaringan
+                    di lokasi Anda.
                 </p>
             </div>
 
-            <div class="feature-item">
+            <div class="feature-item surface-panel">
                 <div class="feature-icon">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -46,22 +56,36 @@
                         ></path>
                     </svg>
                 </div>
-                <h3 class="feature-title">Tanpa FUP / Unlimited</h3>
+                <h3 class="feature-title">Support lokal mudah dihubungi</h3>
                 <p class="feature-desc">
-                    Bebas browsing, streaming, dan gaming sepuasnya tanpa
-                    batasan kuota (Fair Usage Policy).
+                    Konsultasi paket, cek area, dan tindak lanjut pemasangan
+                    dilakukan melalui WhatsApp resmi EONET agar percakapan tetap
+                    mudah dilacak.
                 </p>
             </div>
 
-            <div class="feature-item promo-item">
-                <div class="promo-badge">PROMO TAHUN BARU</div>
-                <h3 class="promo-title">
-                    Biaya Pasang <br /><span class="text-highlight"
-                        >20 Ribu</span>
-                </h3>
-                <p class="promo-desc">
-                    *Syarat & Ketentuan Berlaku. <br />Khusus Pemasangan Baru!! <br
-                    />Periode 01 - 28 Februari 2026
+            <div class="feature-item surface-panel coverage-item">
+                <div class="feature-icon">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-6 h-6"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689A1.125 1.125 0 003 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"
+                        ></path>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Paket transparan sebelum pasang</h3>
+                <p class="feature-desc">
+                    Area layanan, biaya, dan konfirmasi teknis dijelaskan lebih
+                    dulu sebelum pemasangan. Ketersediaan akhir tetap dicek dari
+                    lokasi pelanggan.
                 </p>
             </div>
         </div>
@@ -70,35 +94,41 @@
 
 <style>
     .features-section {
-        padding: 60px 0;
         border-top: 1px solid rgba(255, 255, 255, 0.05);
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(0, 0, 0, 0.2);
+        background: linear-gradient(180deg, rgba(4, 10, 20, 0.92), rgba(7, 18, 35, 0.72));
     }
 
     .features-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 3rem;
+        gap: var(--space-lg);
     }
 
     .feature-item {
-        padding: 2rem;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: var(--radius-lg);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: var(--space-lg);
+        position: relative;
+        isolation: isolate;
+    }
+
+    .feature-item::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(45, 212, 191, 0.16), transparent 36%);
+        pointer-events: none;
+        z-index: -1;
     }
 
     .feature-icon {
         width: 48px;
         height: 48px;
-        background: rgba(107, 70, 193, 0.2);
-        color: var(--color-primary);
+        background: rgba(45, 212, 191, 0.14);
+        color: var(--accent-300);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: var(--space-lg);
     }
 
     .feature-icon svg {
@@ -109,51 +139,18 @@
     .feature-title {
         font-size: 1.25rem;
         font-weight: 700;
-        margin-bottom: 0.75rem;
+        margin-bottom: var(--space-sm);
+        color: var(--text-50);
     }
 
     .feature-desc {
-        color: var(--color-text-muted);
+        color: var(--text-200);
         font-size: 0.95rem;
     }
 
-    .promo-item {
-        background: linear-gradient(
-            135deg,
-            rgba(243, 111, 33, 0.1) 0%,
-            rgba(243, 111, 33, 0.05) 100%
-        );
-        border: 1px solid rgba(243, 111, 33, 0.3);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .promo-badge {
-        background: var(--color-accent);
-        color: #000;
-        font-weight: 800;
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        margin-bottom: 1rem;
-        transform: rotate(-2deg);
-    }
-
-    .promo-title {
-        font-size: 1.5rem;
-        font-weight: 800;
-        line-height: 1.2;
-        margin-bottom: 1rem;
-    }
-
-    .text-highlight {
-        color: var(--color-accent);
-        font-size: 2rem;
-    }
-
-    .promo-desc {
-        font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.7);
+    @media (min-width: 768px) {
+        .features-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 </style>
