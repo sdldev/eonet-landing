@@ -22,3 +22,10 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# local agent/session artifacts
+.pi/
+.sisyphus/
+
+# test artifacts
+test-results/
