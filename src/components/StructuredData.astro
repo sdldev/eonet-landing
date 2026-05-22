@@ -1,0 +1,74 @@
+---
+import { packages, faqs, WHATSAPP_BASE_URL } from "../data/site";
+
+const siteUrl = Astro.site ?? Astro.url.origin;
+const websiteUrl = new URL(Astro.url.pathname, siteUrl).href;
+const organizationId = new URL("#organization", websiteUrl).href;
+const websiteId = new URL("#website", websiteUrl).href;
+
+const schema = [
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": organizationId,
+        name: "EONET Connection",
+        url: websiteUrl,
+        logo: new URL("/eonet.avif", siteUrl).href,
+        contactPoint: {
+            "@type": "ContactPoint",
+            contactType: "customer support",
+            url: WHATSAPP_BASE_URL,
+            availableLanguage: "Indonesian",
+        },
+    },
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": websiteId,
+        name: "EONET Connection",
+        url: websiteUrl,
+        publisher: {
+            "@id": organizationId,
+        },
+        inLanguage: "id-ID",
+    },
+    {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: "Paket Internet EONET",
+        itemListElement: packages.map((pkg, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            item: {
+                "@type": "Product",
+                name: pkg.package,
+                description: `${pkg.package} EONET dengan kecepatan ${pkg.speed} untuk ${pkg.devices} perangkat ideal.`,
+                brand: {
+                    "@id": organizationId,
+                },
+                offers: {
+                    "@type": "Offer",
+                    priceCurrency: "IDR",
+                    price: `${pkg.price}000`,
+                    availability: "https://schema.org/InStock",
+                    url: `${WHATSAPP_BASE_URL}?text=${encodeURIComponent(`Halo EONET, saya ingin konsultasi ${pkg.package}.`)}`,
+                },
+            },
+        })),
+    },
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: {
+                "@type": "Answer",
+                text: faq.answer,
+            },
+        })),
+    },
+];
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />
