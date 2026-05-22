@@ -1,5 +1,5 @@
 ---
-
+import { trustSignals } from "../data/site";
 ---
 
 <section id="features" class="features-section section">
@@ -14,80 +14,30 @@
         </div>
 
         <div class="features-grid">
-            <div class="feature-item surface-panel">
-                <div class="feature-icon">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-6 h-6"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
-                        ></path>
-                    </svg>
-                </div>
-                <h3 class="feature-title">Koneksi stabil untuk aktivitas harian</h3>
-                <p class="feature-desc">
-                    Dirancang untuk kebutuhan rumah dan usaha seperti meeting,
-                    belajar online, streaming, dan gaming sesuai kondisi jaringan
-                    di lokasi Anda.
-                </p>
-            </div>
-
-            <div class="feature-item surface-panel">
-                <div class="feature-icon">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-6 h-6"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                        ></path>
-                    </svg>
-                </div>
-                <h3 class="feature-title">Support lokal mudah dihubungi</h3>
-                <p class="feature-desc">
-                    Konsultasi paket, cek area, dan tindak lanjut pemasangan
-                    dilakukan melalui WhatsApp resmi EONET agar percakapan tetap
-                    mudah dilacak.
-                </p>
-            </div>
-
-            <div class="feature-item surface-panel coverage-item">
-                <div class="feature-icon">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-6 h-6"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689A1.125 1.125 0 003 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"
-                        ></path>
-                    </svg>
-                </div>
-                <h3 class="feature-title">Paket transparan sebelum pasang</h3>
-                <p class="feature-desc">
-                    Area layanan, biaya, dan konfirmasi teknis dijelaskan lebih
-                    dulu sebelum pemasangan. Ketersediaan akhir tetap dicek dari
-                    lokasi pelanggan.
-                </p>
-            </div>
+            {
+                trustSignals.map((signal) => (
+                    <div class="feature-item surface-panel">
+                        <div class="feature-icon">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.5"
+                                stroke="currentColor"
+                                class="w-6 h-6"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M9 12.75L11.25 15 15 9.75m6-1.5c0 5.213-3.438 9.625-8.172 11.096a.75.75 0 01-.656 0C7.438 17.875 4 13.463 4 8.25V5.818c0-.337.225-.632.55-.716a12.035 12.035 0 007.45-4.1.75.75 0 011 0 12.035 12.035 0 007.45 4.1c.325.084.55.379.55.716V8.25z"
+                                ></path>
+                            </svg>
+                        </div>
+                        <h3 class="feature-title">{signal.title}</h3>
+                        <p class="feature-desc">{signal.description}</p>
+                    </div>
+                ))
+            }
         </div>
     </div>
 </section>
