@@ -6,6 +6,7 @@ interface Props {
     description?: string;
     canonical?: string;
     image?: string;
+    ogImage?: string;
     siteName?: string;
 }
 
@@ -13,12 +14,13 @@ const {
     title,
     description = "EONET - Solusi Internet Cepat & Stabil untuk Rumah & Bisnis",
     canonical = Astro.url.href,
-    image = "/eonet.avif",
+    image,
+    ogImage = image ?? "/eonet.avif",
     siteName = "EONET Connection",
 } = Astro.props;
 
 const canonicalUrl = new URL(canonical, Astro.url).href;
-const imageUrl = new URL(image, Astro.url).href;
+const ogImageUrl = new URL(ogImage, Astro.url).href;
 ---
 <!doctype html>
 <html lang="id">
@@ -33,13 +35,14 @@ const imageUrl = new URL(image, Astro.url).href;
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:image" content={imageUrl} />
-        <meta property="og:site_name" content={siteName} />
         <meta property="og:type" content="website" />
+        <meta property="og:locale" content="id_ID" />
+        <meta property="og:site_name" content={siteName} />
+        <meta property="og:image" content={ogImageUrl} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={imageUrl} />
+        <meta name="twitter:image" content={ogImageUrl} />
         <meta name="generator" content={Astro.generator} />
         <title>{title}</title>
     </head>
@@ -48,7 +51,6 @@ const imageUrl = new URL(image, Astro.url).href;
         <slot />
     </body>
 </html>
-
 <style>
     .fixed-bg {
         position: fixed;
