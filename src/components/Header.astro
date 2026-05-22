@@ -22,7 +22,18 @@
             >
         </a>
 
-        <nav class="nav">
+        <button
+            class="nav-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="primary-nav"
+            aria-label="Toggle navigation"
+        >
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <nav class="nav" id="primary-nav">
             <a href="#home" class="nav-link">Home</a>
             <a href="#packages" class="nav-link">Paket Internet</a>
             <a href="#features" class="nav-link">Fitur</a>
@@ -44,7 +55,6 @@
         backdrop-filter: blur(14px);
         border-bottom: 1px solid var(--border-soft);
     }
-
     .header-container {
         display: flex;
         justify-content: space-between;
@@ -53,7 +63,6 @@
         min-height: 76px;
         padding-block: 0.85rem;
     }
-
     .logo {
         display: flex;
         align-items: center;
@@ -62,20 +71,17 @@
         font-weight: 700;
         font-size: 1.15rem;
     }
-
     .logo-icon {
         color: var(--accent-400);
         width: 28px;
         height: 28px;
         flex-shrink: 0;
     }
-
     .logo-text {
         display: flex;
         flex-direction: column;
         line-height: 1;
     }
-
     .logo-sub {
         font-size: 0.72rem;
         font-weight: 600;
@@ -84,7 +90,9 @@
         text-transform: uppercase;
         line-height: 1;
     }
-
+    .nav-toggle {
+        display: none;
+    }
     .nav {
         display: flex;
         align-items: center;
@@ -92,7 +100,6 @@
         flex-wrap: wrap;
         justify-content: flex-end;
     }
-
     .nav-link {
         color: var(--text-200);
         transition:
@@ -103,31 +110,95 @@
         padding: 0.55rem 0.75rem;
         border-radius: 999px;
     }
-
     .nav-link:hover {
         color: var(--text-50);
         background: rgba(151, 174, 200, 0.12);
     }
-
     .header-cta {
         white-space: nowrap;
     }
-
     @media (max-width: 768px) {
         .header-container {
+            position: relative;
             min-height: 70px;
         }
-
-        .nav-link {
-            display: none;
+        .nav-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 0.28rem;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            color: var(--text-50);
+            background: rgba(151, 174, 200, 0.12);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            cursor: pointer;
         }
-
+        .nav-toggle span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 999px;
+        }
+        .nav {
+            display: none;
+            position: absolute;
+            top: calc(100% + 0.75rem);
+            left: 1rem;
+            right: 1rem;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            padding: 0.85rem;
+            background: rgba(7, 18, 35, 0.96);
+            border: 1px solid var(--border-soft);
+            border-radius: 18px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+        }
+        .nav.is-open {
+            display: flex;
+        }
+        .nav-link {
+            display: block;
+            width: 100%;
+        }
         .logo {
             font-size: 1rem;
         }
-
         .header-cta {
+            width: 100%;
             padding-inline: 0.95rem;
         }
     }
 </style>
+<script>
+    const navToggle = document.querySelector(".nav-toggle");
+    const primaryNav = document.querySelector("#primary-nav");
+
+    const closeNav = () => {
+        primaryNav?.classList.remove("is-open");
+        navToggle?.setAttribute("aria-expanded", "false");
+    };
+
+    navToggle?.addEventListener("click", () => {
+        const isOpen = primaryNav?.classList.toggle("is-open") ?? false;
+
+        navToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    primaryNav?.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLAnchorElement) {
+            closeNav();
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            closeNav();
+        }
+    });
+</script>
