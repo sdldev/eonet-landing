@@ -1,7 +1,6 @@
 ---
-import { packages, faqs, WHATSAPP_BASE_URL } from "../data/site";
-
-const whatsappBase = WHATSAPP_BASE_URL;
+import { packages, faqs } from "../data/site";
+import { buildWhatsAppUrl } from "../data/contact";
 ---
 
 <section id="packages" class="packages-section section">
@@ -35,7 +34,7 @@ const whatsappBase = WHATSAPP_BASE_URL;
 
                         <div class="card-footer">
                             <a
-                                href={`${whatsappBase}?text=${encodeURIComponent(`Halo EONET, saya ingin konsultasi ${pkg.package}.`)}`}
+                                href={buildWhatsAppUrl(`Halo EONET, saya ingin konsultasi ${pkg.package}.`)}
                                 class="btn btn-primary full-width"
                                 target="_blank"
                                 rel="noreferrer"

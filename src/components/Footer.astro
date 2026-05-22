@@ -1,5 +1,5 @@
 ---
-
+import { buildWhatsAppUrl } from "../data/contact";
 ---
 
 <footer id="contact" class="footer">
@@ -20,7 +20,7 @@
                     EONET untuk cek area dan langkah pemasangan.
                 </p>
                 <a
-                    href="https://wa.me/6289624424649?text=Halo%20EONET%2C%20saya%20sudah%20melihat%20paket%20di%20website%20dan%20ingin%20konsultasi%20pemasangan."
+                    href={buildWhatsAppUrl("Halo EONET, saya sudah melihat paket di website dan ingin konsultasi pemasangan.")}
                     class="btn btn-primary contact-link"
                     target="_blank"
                     rel="noreferrer"

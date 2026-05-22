@@ -25,7 +25,6 @@ export const trustSignals = [
         description: "Konfirmasi kebutuhan, area, dan jadwal lebih dulu sebelum proses pemasangan.",
     },
 ];
-export const WHATSAPP_BASE_URL = "https://wa.me/6289624424649";
 
 export const faqs = [
     {

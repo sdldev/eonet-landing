@@ -1,5 +1,6 @@
 ---
-import { packages, faqs, WHATSAPP_BASE_URL } from "../data/site";
+import { packages, faqs } from "../data/site";
+import { WHATSAPP_BASE_URL, buildWhatsAppUrl } from "../data/contact";
 
 const siteUrl = Astro.site ?? Astro.url.origin;
 const websiteUrl = new URL(Astro.url.pathname, siteUrl).href;
@@ -51,7 +52,7 @@ const schema = [
                     priceCurrency: "IDR",
                     price: `${pkg.price}000`,
                     availability: "https://schema.org/InStock",
-                    url: `${WHATSAPP_BASE_URL}?text=${encodeURIComponent(`Halo EONET, saya ingin konsultasi ${pkg.package}.`)}`,
+                    url: buildWhatsAppUrl(`Halo EONET, saya ingin konsultasi ${pkg.package}.`),
                 },
             },
         })),
