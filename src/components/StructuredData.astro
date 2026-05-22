@@ -1,5 +1,5 @@
 ---
-import { packages, faqs } from "../data/site";
+import { packages, faqs } from "../data/packages";
 import { WHATSAPP_BASE_URL, buildWhatsAppUrl } from "../data/contact";
 
 const siteUrl = Astro.site ?? Astro.url.origin;
@@ -42,8 +42,8 @@ const schema = [
             position: index + 1,
             item: {
                 "@type": "Product",
-                name: pkg.package,
-                description: `${pkg.package} EONET dengan kecepatan ${pkg.speed} untuk ${pkg.devices} perangkat ideal.`,
+                name: pkg.name,
+                description: `${pkg.name} EONET dengan kecepatan ${pkg.speed} untuk ${pkg.devices} perangkat ideal.`,
                 brand: {
                     "@id": organizationId,
                 },
@@ -52,7 +52,7 @@ const schema = [
                     priceCurrency: "IDR",
                     price: `${pkg.price}000`,
                     availability: "https://schema.org/InStock",
-                    url: buildWhatsAppUrl(`Halo EONET, saya ingin konsultasi ${pkg.package}.`),
+                    url: buildWhatsAppUrl(`Halo EONET, saya ingin konsultasi ${pkg.name}.`),
                 },
             },
         })),

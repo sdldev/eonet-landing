@@ -1,5 +1,5 @@
 ---
-import { packages, faqs } from "../data/site";
+import { packages, faqs } from "../data/packages";
 import { buildWhatsAppUrl } from "../data/contact";
 ---
 
@@ -19,7 +19,7 @@ import { buildWhatsAppUrl } from "../data/contact";
                 packages.map((pkg) => (
                     <article class="package-card surface-panel">
                         <div class="card-header">
-                            <p class="package-label">{pkg.package}</p>
+                            <p class="package-label">{pkg.name}</p>
                             <h3 class="package-name">{pkg.speed}</h3>
                         </div>
 
@@ -34,7 +34,7 @@ import { buildWhatsAppUrl } from "../data/contact";
 
                         <div class="card-footer">
                             <a
-                                href={buildWhatsAppUrl(`Halo EONET, saya ingin konsultasi ${pkg.package}.`)}
+                                href={buildWhatsAppUrl(`Halo EONET, saya ingin konsultasi ${pkg.name}.`)}
                                 class="btn btn-primary full-width"
                                 target="_blank"
                                 rel="noreferrer"
@@ -46,7 +46,7 @@ import { buildWhatsAppUrl } from "../data/contact";
                         <dl class="details-list">
                                 <div class="detail-item">
                                     <dt>Nama paket</dt>
-                                    <dd>{pkg.package}</dd>
+                                    <dd>{pkg.name}</dd>
                                 </div>
                                 <div class="detail-item">
                                     <dt>Kecepatan</dt>
