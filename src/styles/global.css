@@ -111,6 +111,25 @@ button {
   color: inherit;
 }
 
+.skip-link {
+  position: fixed;
+  top: var(--space-md);
+  left: var(--space-md);
+  z-index: 2000;
+  transform: translateY(calc(-100% - var(--space-md)));
+  padding: var(--space-sm) var(--space-md);
+  color: var(--accent-ink);
+  background: var(--accent-400);
+  border-radius: 999px;
+  box-shadow: var(--shadow-focus);
+  font-weight: 700;
+  transition: transform var(--transition-base);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 h1,
 h2,
 h3,
