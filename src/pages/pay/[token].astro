@@ -12,10 +12,10 @@ const snapJsUrl = midtransIsProduction
     ? "https://app.midtrans.com/snap/snap.js"
     : "https://app.sandbox.midtrans.com/snap/snap.js";
 
-// Set permissive CSP header for Midtrans Snap.js (uses eval + iframe)
+// Set permissive CSP header for Midtrans Snap.js (uses eval + iframe + multiple subdomains)
 Astro.response.headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://app.midtrans.com https://api.midtrans.com https://api.sandbox.midtrans.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://app.sandbox.midtrans.com https://app.midtrans.com; frame-src https://app.sandbox.midtrans.com https://app.midtrans.com; img-src 'self' data: https:; connect-src 'self' https://api.eonet.id https://api.sandbox.midtrans.com https://api.midtrans.com https://app.sandbox.midtrans.com https://app.midtrans.com; font-src 'self' https:;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.midtrans.com https://*.sandbox.midtrans.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://*.midtrans.com; frame-src https://*.midtrans.com https://*.sandbox.midtrans.com; img-src 'self' data: https:; connect-src 'self' https://api.eonet.id https://*.midtrans.com https://*.sandbox.midtrans.com; font-src 'self' https:;"
 );
 
 const { token } = Astro.params;
