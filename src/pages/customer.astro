@@ -186,6 +186,12 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     return map[status] ?? "badge-muted";
   }
 
+  function escapeHtml(str) {
+    var d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
   function statusLabel(status) {
     const map = {
       paid: "Lunas",
@@ -267,7 +273,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
           (inv) => `
         <div class="invoice-row">
           <div class="inv-top">
-            <span class="inv-number">${inv.invoice_number}</span>
+            <span class="inv-number">${escapeHtml(inv.invoice_number)}</span>
             <span class="inv-status ${statusClass(inv.status)}">${statusLabel(inv.status)}</span>
           </div>
           <div class="inv-meta">

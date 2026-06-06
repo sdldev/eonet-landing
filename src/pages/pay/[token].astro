@@ -302,6 +302,12 @@ const pageTitle = invoice
             overlay.hidden = false;
         }
 
+        function escapeHtml(str) {
+            var d = document.createElement('div');
+            d.textContent = str || '';
+            return d.innerHTML;
+        }
+
         function hideOverlay() {
             if (overlay) overlay.hidden = true;
         }
@@ -364,7 +370,7 @@ const pageTitle = invoice
                     showOverlay(`
                         <div class="state-icon error">×</div>
                         <h2 class="state-title">Gagal Memulai Pembayaran</h2>
-                        <p class="state-message">${err.error?.message ?? "Silakan coba lagi beberapa saat."}</p>
+                        <p class="state-message">${escapeHtml(err.error?.message) ?? "Silakan coba lagi beberapa saat."}</p>
                         <button class="btn btn-secondary" id="retry-close">Tutup</button>
                     `);
                     document.getElementById("retry-close")?.addEventListener("click", hideOverlay);
