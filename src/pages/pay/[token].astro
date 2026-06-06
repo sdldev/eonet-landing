@@ -12,6 +12,12 @@ const snapJsUrl = midtransIsProduction
     ? "https://app.midtrans.com/snap/snap.js"
     : "https://app.sandbox.midtrans.com/snap/snap.js";
 
+// Set permissive CSP header for Midtrans Snap.js (uses eval + iframe)
+Astro.response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://app.midtrans.com https://api.midtrans.com https://api.sandbox.midtrans.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://app.sandbox.midtrans.com https://app.midtrans.com; frame-src https://app.sandbox.midtrans.com https://app.midtrans.com; img-src 'self' data: https:; connect-src 'self' https://api.eonet.id https://api.sandbox.midtrans.com https://api.midtrans.com https://app.sandbox.midtrans.com https://app.midtrans.com; font-src 'self' https:;"
+);
+
 const { token } = Astro.params;
 
 type Invoice = {
@@ -102,9 +108,6 @@ const pageTitle = invoice
 ---
 
 <Layout title={pageTitle}>
-    <Fragment slot="head">
-        <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://app.midtrans.com https://api.midtrans.com https://api.sandbox.midtrans.com; frame-src https://app.sandbox.midtrans.com https://app.midtrans.com;" />
-    </Fragment>
     <Header />
     <main>
         <section class="pay-section">
