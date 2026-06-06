@@ -70,49 +70,47 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
         <div id="dashboard" hidden>
           <div class="dashboard-grid">
 
-            <!-- Customer Info -->
-            <div class="surface-panel dash-card" id="dash-customer">
-              <div class="card-header-row">
-                <h2 class="card-title" id="cust-name">-</h2>
-                <span class="status-badge" id="cust-status">-</span>
+            <!-- Current Month Status (HERO) -->
+            <div class="surface-panel dash-hero" id="dash-hero">
+              <div class="hero-status" id="hero-status">
+                <div class="hero-icon" id="hero-icon">⏳</div>
+                <div class="hero-text">
+                  <h2 id="hero-title">Memuat...</h2>
+                  <p id="hero-subtitle"></p>
+                </div>
               </div>
-              <dl class="info-list">
-                <div class="info-row"><dt>No. HP</dt><dd id="cust-phone">-</dd></div>
-                <div class="info-row"><dt>Kode</dt><dd id="cust-no">-</dd></div>
-                <div class="info-row"><dt>Email</dt><dd id="cust-email">-</dd></div>
-                <div class="info-row"><dt>Alamat</dt><dd id="cust-address">-</dd></div>
-                <div class="info-row"><dt>Tgl Mulai</dt><dd id="cust-start">-</dd></div>
-                <div class="info-row"><dt>Jatuh Tempo</dt><dd id="cust-due">-</dd></div>
-              </dl>
+              <div class="hero-actions" id="hero-actions"></div>
             </div>
 
-            <!-- Package Info -->
-            <div class="surface-panel dash-card" id="dash-package">
-              <h2 class="card-title">Paket Aktif</h2>
-              <div class="pkg-name" id="pkg-name">-</div>
-              <div class="pkg-speed" id="pkg-speed">-</div>
-              <div class="pkg-price" id="pkg-price">-</div>
-            </div>
-
-            <!-- Summary bar -->
-            <div class="summary-bar" id="dash-summary">
-              <div class="summary-item">
-                <span class="summary-num" id="sum-total">0</span>
-                <span class="summary-label">Total Invoice</span>
+            <!-- Package + Customer Info (2 columns) -->
+            <div class="info-grid">
+              <div class="surface-panel dash-card">
+                <h3 class="card-title">Paket Aktif</h3>
+                <div class="pkg-name" id="pkg-name">-</div>
+                <div class="pkg-speed" id="pkg-speed">-</div>
+                <div class="pkg-price" id="pkg-price">-</div>
               </div>
-              <div class="summary-item summary-paid">
-                <span class="summary-num" id="sum-paid">0</span>
-                <span class="summary-label">Lunas</span>
-              </div>
-              <div class="summary-item summary-unpaid">
-                <span class="summary-num" id="sum-unpaid">0</span>
-                <span class="summary-label">Belum Lunas</span>
+              <div class="surface-panel dash-card">
+                <h3 class="card-title">Data Pelanggan</h3>
+                <dl class="info-list">
+                  <div class="info-row"><dt>Nama</dt><dd id="cust-name">-</dd></div>
+                  <div class="info-row"><dt>No. WhatsApp</dt><dd id="cust-phone">-</dd></div>
+                  <div class="info-row"><dt>Kode</dt><dd id="cust-no">-</dd></div>
+                  <div class="info-row"><dt>Alamat</dt><dd id="cust-address">-</dd></div>
+                  <div class="info-row"><dt>Tgl Jatuh Tempo</dt><dd id="cust-due">-</dd></div>
+                </dl>
               </div>
             </div>
 
-            <!-- Invoice Table -->
+            <!-- Invoice History -->
             <div class="surface-panel dash-card dash-table-card">
-              <h2 class="card-title">Riwayat Invoice</h2>
+              <div class="card-header-row">
+                <h3 class="card-title">Riwayat Invoice</h3>
+                <div class="summary-chips">
+                  <span class="chip chip-success" id="sum-paid">0 Lunas</span>
+                  <span class="chip chip-danger" id="sum-unpaid">0 Belum</span>
+                </div>
+              </div>
               <div id="invoice-list" class="invoice-list">
                 <p class="text-muted">Memuat...</p>
               </div>
@@ -200,46 +198,73 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     return map[status] ?? status;
   }
 
-  function renderDashboard(data: any) {
+  function renderDashboard(data) {
     const c = data.customer;
     const pkg = data.package;
     const invoices = data.invoices ?? [];
     const counts = data.invoice_counts ?? { total: 0, paid: 0, unpaid: 0 };
 
-    // Customer
-    document.getElementById("cust-name")!.textContent = c.full_name;
-    document.getElementById("cust-status")!.textContent = c.status === "active" ? "Aktif" : c.status;
-    document.getElementById("cust-status")!.className = `status-badge ${c.status === "active" ? "badge-success" : "badge-warn"}`;
-    document.getElementById("cust-phone")!.textContent = c.phone;
-    document.getElementById("cust-no")!.textContent = c.customer_no;
-    document.getElementById("cust-email")!.textContent = c.email ?? "-";
-    document.getElementById("cust-address")!.textContent = c.address;
-    document.getElementById("cust-start")!.textContent = formatDate(c.subscription_started_at);
-    document.getElementById("cust-due")!.textContent = `Tgl ${c.due_day}`;
+    // Find current month invoice
+    const now = new Date();
+    const currentInvoice = invoices.find((inv) => {
+      const start = new Date(inv.period_start);
+      return start.getUTCFullYear() === now.getFullYear() && start.getUTCMonth() === now.getMonth();
+    });
+
+    // Hero - Current Month Status
+    const heroIcon = document.getElementById("hero-icon");
+    const heroTitle = document.getElementById("hero-title");
+    const heroSubtitle = document.getElementById("hero-subtitle");
+    const heroActions = document.getElementById("hero-actions");
+    const heroEl = document.getElementById("dash-hero");
+
+    if (!currentInvoice) {
+      heroIcon.textContent = "📋";
+      heroTitle.textContent = "Belum ada tagihan bulan ini";
+      heroSubtitle.textContent = "Invoice akan diterbitkan pada awal bulan.";
+      heroEl.classList.add("hero-neutral");
+    } else if (currentInvoice.status === "paid") {
+      heroIcon.textContent = "✅";
+      heroTitle.textContent = "Tagihan Bulan Ini Sudah Lunas";
+      heroSubtitle.textContent = `${currentInvoice.invoice_number} — ${formatRupiah(currentInvoice.total)}`;
+      heroEl.classList.add("hero-success");
+    } else {
+      const isOverdue = currentInvoice.status === "overdue";
+      heroIcon.textContent = isOverdue ? "⚠️" : "💳";
+      heroTitle.textContent = isOverdue ? "Tagihan Sudah Jatuh Tempo!" : "Tagihan Belum Dibayar";
+      heroSubtitle.textContent = `${currentInvoice.invoice_number} — ${formatRupiah(currentInvoice.total)} (jatuh tempo: ${formatDate(currentInvoice.due_date)})`;
+      heroEl.classList.add(isOverdue ? "hero-danger" : "hero-warn");
+      if (currentInvoice.can_pay) {
+        heroActions.innerHTML = `<a class="btn btn-primary" href="/pay/${currentInvoice.payment_token ?? ''}">Bayar Sekarang</a>`;
+      }
+    }
 
     // Package
     if (pkg) {
-      document.getElementById("pkg-name")!.textContent = pkg.name;
-      document.getElementById("pkg-speed")!.textContent = pkg.speed ?? `${pkg.download_mbps} Mbps ↓ / ${pkg.upload_mbps} Mbps ↑`;
-      document.getElementById("pkg-price")!.textContent = `${formatRupiah(pkg.price)}/bln`;
-      document.getElementById("dash-package")!.removeAttribute("hidden");
-    } else {
-      document.getElementById("dash-package")!.setAttribute("hidden", "");
+      document.getElementById("pkg-name").textContent = pkg.name;
+      document.getElementById("pkg-speed").textContent = pkg.speed ?? `${pkg.download_mbps} Mbps ↓ / ${pkg.upload_mbps} Mbps ↑`;
+      document.getElementById("pkg-price").textContent = `${formatRupiah(pkg.price)}/bln`;
     }
 
-    // Summary
-    document.getElementById("sum-total")!.textContent = String(counts.total);
-    document.getElementById("sum-paid")!.textContent = String(counts.paid);
-    document.getElementById("sum-unpaid")!.textContent = String(counts.unpaid);
+    // Customer info
+    document.getElementById("cust-name").textContent = c.full_name;
+    document.getElementById("cust-phone").textContent = c.phone;
+    document.getElementById("cust-no").textContent = c.customer_no;
+    document.getElementById("cust-address").textContent = c.address;
+    document.getElementById("cust-due").textContent = `Setiap tanggal ${c.due_day}`;
+
+    // Summary chips
+    document.getElementById("sum-paid").textContent = `${counts.paid} Lunas`;
+    document.getElementById("sum-unpaid").textContent = `${counts.unpaid} Belum`;
 
     // Invoice list
-    const list = document.getElementById("invoice-list")!;
+    const list = document.getElementById("invoice-list");
     if (invoices.length === 0) {
       list.innerHTML = '<p class="text-muted">Belum ada invoice.</p>';
     } else {
       list.innerHTML = invoices
         .map(
-          (inv: any) => `
+          (inv) => `
         <div class="invoice-row">
           <div class="inv-top">
             <span class="inv-number">${inv.invoice_number}</span>
@@ -247,21 +272,11 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
           </div>
           <div class="inv-meta">
             <span>${formatDate(inv.period_start)} — ${formatDate(inv.period_end)}</span>
-            <span class="inv-due">Jatuh tempo: ${formatDate(inv.due_date)}</span>
           </div>
           <div class="inv-amounts">
             <span>Total: <strong>${formatRupiah(inv.total)}</strong></span>
-            <span>Dibayar: <strong>${formatRupiah(inv.paid_amount)}</strong></span>
-            ${Number(inv.remaining) > 0 ? `<span class="inv-remaining">Sisa: <strong>${formatRupiah(inv.remaining)}</strong></span>` : ""}
+            ${inv.status === "paid" ? `<span class="inv-paid-label">✓ Lunas</span>` : Number(inv.remaining) > 0 ? `<span class="inv-remaining">Sisa: <strong>${formatRupiah(inv.remaining)}</strong></span>` : ""}
           </div>
-          ${inv.payments?.length ? `
-          <div class="inv-payments">
-            ${inv.payments.map((p: any) => `
-              <div class="pay-chip ${p.status === "success" ? "pay-success" : ""}">
-                ${p.paymentNumber} · ${formatRupiah(p.amount)} · ${p.method} · ${formatDate(p.paidAt)}
-              </div>
-            `).join("")}
-          </div>` : ""}
         </div>
       `
         )
@@ -408,17 +423,63 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     gap: var(--space-lg);
   }
 
+  /* Hero - current month status */
+  .dash-hero {
+    padding: var(--space-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-lg);
+    flex-wrap: wrap;
+  }
+
+  .hero-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .hero-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+  }
+
+  .hero-text h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-50);
+  }
+
+  .hero-text p {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-300);
+  }
+
+  .hero-success { border-left: 4px solid #34d399; }
+  .hero-warn { border-left: 4px solid #fbbf24; }
+  .hero-danger { border-left: 4px solid #f87171; }
+  .hero-neutral { border-left: 4px solid var(--border-soft); }
+
+  /* Info grid (2 col) */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+  }
+
   .dash-card {
     padding: var(--space-lg);
   }
 
   .card-title {
-    font-size: 1rem;
+    font-size: 0.8rem;
     font-weight: 700;
-    color: var(--text-200);
+    color: var(--text-300);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: var(--space-md);
+    letter-spacing: 0.06em;
+    margin: 0 0 var(--space-sm) 0;
   }
 
   .card-header-row {
@@ -429,207 +490,48 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     gap: var(--space-sm);
   }
 
-  .card-header-row .card-title {
-    margin-bottom: 0;
-  }
+  .card-header-row .card-title { margin-bottom: 0; }
 
-  .status-badge {
-    padding: 0.25rem 0.65rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    white-space: nowrap;
-  }
+  .pkg-name { font-size: 1.3rem; font-weight: 800; color: var(--text-50); }
+  .pkg-speed { font-size: 0.9rem; color: var(--accent-300); margin-top: var(--space-xs); }
+  .pkg-price { font-size: 1.4rem; font-weight: 800; color: var(--text-50); margin-top: var(--space-sm); }
 
-  .badge-success { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; }
-  .badge-info    { background: rgba(94, 234, 212, 0.12); color: var(--accent-300); }
-  .badge-danger  { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
-  .badge-warn    { background: rgba(251, 191, 36, 0.12); color: #fcd34d; }
-  .badge-muted   { background: rgba(151, 174, 200, 0.1); color: var(--text-300); }
+  .info-list { display: grid; gap: var(--space-xs); margin: 0; }
+  .info-row { display: flex; justify-content: space-between; gap: var(--space-md); padding: var(--space-xs) 0; border-bottom: 1px solid rgba(151,174,200,0.08); }
+  .info-row:last-child { border-bottom: 0; }
+  .info-row dt { font-size: 0.82rem; color: var(--text-300); flex-shrink: 0; }
+  .info-row dd { margin: 0; font-weight: 600; text-align: right; word-break: break-word; font-size: 0.88rem; }
 
-  .info-list {
-    display: grid;
-    gap: var(--space-sm);
-    margin: 0;
-  }
-
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-md);
-    padding: var(--space-xs) 0;
-    border-bottom: 1px solid rgba(151, 174, 200, 0.08);
-  }
-
-  .info-row dt {
-    font-size: 0.82rem;
-    color: var(--text-300);
-    flex-shrink: 0;
-  }
-
-  .info-row dd {
-    margin: 0;
-    font-weight: 600;
-    text-align: right;
-    word-break: break-word;
-  }
-
-  .pkg-name {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--text-50);
-  }
-
-  .pkg-speed {
-    font-size: 0.92rem;
-    color: var(--accent-300);
-    margin-top: var(--space-xs);
-  }
-
-  .pkg-price {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--text-50);
-    margin-top: var(--space-sm);
-  }
-
-  /* Summary bar */
-  .summary-bar {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-sm);
-  }
-
-  .summary-item {
-    background: rgba(16, 37, 61, 0.6);
-    border: 1px solid var(--border-soft);
-    border-radius: var(--radius-md);
-    padding: var(--space-md);
-    text-align: center;
-  }
-
-  .summary-num {
-    display: block;
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--text-50);
-  }
-
-  .summary-label {
-    font-size: 0.8rem;
-    color: var(--text-300);
-    margin-top: var(--space-2xs);
-  }
-
-  .summary-paid .summary-num { color: #6ee7b7; }
-  .summary-unpaid .summary-num { color: #fca5a5; }
+  /* Summary chips */
+  .summary-chips { display: flex; gap: var(--space-xs); }
+  .chip { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+  .chip-success { background: rgba(52,211,153,0.15); color: #6ee7b7; }
+  .chip-danger { background: rgba(248,113,113,0.12); color: #fca5a5; }
 
   /* Invoice list */
-  .dash-table-card {
-    overflow: visible;
-  }
+  .invoice-list { display: grid; gap: var(--space-sm); }
+  .invoice-row { padding: var(--space-md); border: 1px solid rgba(151,174,200,0.1); border-radius: var(--radius-md); background: rgba(4,10,20,0.24); display: grid; gap: var(--space-xs); }
+  .inv-top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); }
+  .inv-number { font-weight: 700; font-size: 0.88rem; }
+  .inv-status { padding: 0.2rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+  .inv-meta { font-size: 0.8rem; color: var(--text-300); }
+  .inv-amounts { display: flex; flex-wrap: wrap; gap: var(--space-md); font-size: 0.86rem; color: var(--text-200); }
+  .inv-remaining strong { color: #fca5a5; }
+  .inv-paid-label { color: #6ee7b7; font-weight: 600; font-size: 0.82rem; }
 
-  .invoice-list {
-    display: grid;
-    gap: var(--space-sm);
-  }
+  .text-muted { color: var(--text-300); text-align: center; padding: var(--space-lg); }
+  .logout-row { margin-top: var(--space-xl); text-align: center; }
 
-  .invoice-row {
-    padding: var(--space-md);
-    border: 1px solid rgba(151, 174, 200, 0.1);
-    border-radius: var(--radius-md);
-    background: rgba(4, 10, 20, 0.24);
-    display: grid;
-    gap: var(--space-sm);
-  }
-
-  .inv-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-sm);
-  }
-
-  .inv-number {
-    font-weight: 700;
-    font-size: 0.9rem;
-  }
-
-  .inv-status {
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 700;
-  }
-
-  .inv-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-    font-size: 0.82rem;
-    color: var(--text-300);
-  }
-
-  .inv-due {
-    color: #fca5a5;
-  }
-
-  .inv-amounts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-md);
-    font-size: 0.88rem;
-    color: var(--text-200);
-  }
-
-  .inv-remaining strong {
-    color: #fca5a5;
-  }
-
-  .inv-payments {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-    padding-top: var(--space-xs);
-    border-top: 1px solid rgba(151, 174, 200, 0.08);
-  }
-
-  .pay-chip {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    background: rgba(151, 174, 200, 0.08);
-    color: var(--text-300);
-  }
-
-  .pay-success {
-    background: rgba(52, 211, 153, 0.1);
-    color: #6ee7b7;
-  }
-
-  .text-muted {
-    color: var(--text-300);
-    text-align: center;
-    padding: var(--space-lg);
-  }
-
-  .logout-row {
-    margin-top: var(--space-xl);
-    text-align: center;
-  }
+  .status-badge { padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+  .badge-success { background: rgba(52,211,153,0.15); color: #6ee7b7; }
+  .badge-info { background: rgba(94,234,212,0.12); color: var(--accent-300); }
+  .badge-danger { background: rgba(248,113,113,0.12); color: #fca5a5; }
+  .badge-warn { background: rgba(251,191,36,0.12); color: #fcd34d; }
+  .badge-muted { background: rgba(151,174,200,0.1); color: var(--text-300); }
 
   @media (max-width: 640px) {
-    .customer-section {
-      padding-top: 6.5rem;
-    }
-    .auth-card {
-      padding: var(--space-lg);
-    }
-    .dash-card {
-      padding: var(--space-md);
-    }
-    .summary-num {
-      font-size: 1.3rem;
-    }
+    .info-grid { grid-template-columns: 1fr; }
+    .dash-hero { flex-direction: column; align-items: flex-start; }
+    .dash-card { padding: var(--space-md); }
   }
 </style>
