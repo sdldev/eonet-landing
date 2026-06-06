@@ -57,7 +57,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
               <div id="login-error" class="alert alert-error" hidden></div>
 
-              ${turnstileSiteKey ? `<div class="cf-turnstile" data-sitekey="${turnstileSiteKey}" data-theme="dark" id="turnstile-widget"></div>` : ""}
+              {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" id="turnstile-widget"></div>}
 
               <button type="submit" class="btn btn-primary full-width" id="login-btn">
                 Lihat Tagihan
