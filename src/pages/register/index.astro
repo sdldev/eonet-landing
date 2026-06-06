@@ -1,0 +1,403 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+---
+
+<Layout title="Daftar Internet EONET">
+  <Header />
+  <main>
+    <section class="register-section">
+      <div class="container">
+        <h1 class="register-title">Daftar Internet EONET</h1>
+
+        <div class="register-card surface-panel" id="register-card" data-api-base={apiBase}>
+          <form id="register-form" class="register-form" novalidate>
+            <div class="pkg-select-card">
+              <label class="field-label">Paket dipilih <span class="required">*</span></label>
+              <div class="pkg-selected-info" id="pkg-selected-info" hidden>
+                <div class="pkg-selected-name" id="pkg-selected-name"></div>
+                <div class="pkg-selected-detail" id="pkg-selected-detail"></div>
+              </div>
+              <select id="package_id" name="package_id" class="field-input" required>
+                <option value="">Memuat paket...</option>
+              </select>
+              <span class="field-error" id="err-package_id"></span>
+            </div>
+
+            <div class="form-grid">
+              <div class="field field-full">
+                <label for="full_name" class="field-label">Nama lengkap <span class="required">*</span></label>
+                <input type="text" id="full_name" name="full_name" class="field-input" placeholder="Nama sesuai KTP" required autocomplete="name" />
+                <span class="field-error" id="err-full_name"></span>
+              </div>
+
+              <div class="field">
+                <label for="phone" class="field-label">Nomor WhatsApp <span class="required">*</span></label>
+                <input type="tel" id="phone" name="phone" class="field-input" placeholder="628xxxxxxxxxx" required autocomplete="tel" />
+                <span class="field-hint">Otomatis format 628xx. Boleh pakai +, -, atau spasi.</span>
+                <span class="field-error" id="err-phone"></span>
+              </div>
+
+              <div class="field">
+                <label for="email" class="field-label">Email</label>
+                <input type="email" id="email" name="email" class="field-input" placeholder="anda@email.com" autocomplete="email" />
+                <span class="field-error" id="err-email"></span>
+              </div>
+
+              <div class="field field-full">
+                <label for="address" class="field-label">Alamat pemasangan <span class="required">*</span></label>
+                <textarea id="address" name="address" class="field-input field-textarea" placeholder="Alamat lengkap lokasi pemasangan" required rows="3" autocomplete="street-address"></textarea>
+                <span class="field-error" id="err-address"></span>
+              </div>
+
+              <div class="field field-full">
+                <label for="notes" class="field-label">Catatan tambahan</label>
+                <textarea id="notes" name="notes" class="field-input field-textarea" placeholder="Info tambahan (opsional)" rows="2"></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <div id="form-error" class="form-alert form-alert-error" hidden></div>
+              <button type="submit" class="btn btn-primary full-width" id="submit-btn">Lanjutkan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Review Modal -->
+    <div class="review-overlay" id="review-overlay" hidden>
+      <div class="review-modal surface-panel">
+        <h2 class="review-title">Periksa data Anda</h2>
+        <p class="review-subtitle">Pastikan data berikut sudah benar sebelum dikirim.</p>
+
+        <div class="review-list" id="review-list"></div>
+
+        <div id="review-error" class="form-alert form-alert-error" hidden></div>
+
+        <div class="review-actions">
+          <button type="button" class="btn btn-secondary" id="review-back">← Perbaiki Data</button>
+          <button type="button" class="btn btn-primary" id="review-confirm">Ya, Kirim Pendaftaran</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<script>
+  const apiBase = document.getElementById("register-card")?.dataset.apiBase ?? "http://localhost:3000";
+  const form = document.getElementById("register-form") as HTMLFormElement;
+  const packageSelect = document.getElementById("package_id") as HTMLSelectElement;
+  const phoneInput = document.getElementById("phone") as HTMLInputElement;
+  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const formError = document.getElementById("form-error") as HTMLDivElement;
+  const pkgInfo = document.getElementById("pkg-selected-info") as HTMLDivElement;
+  const pkgName = document.getElementById("pkg-selected-name") as HTMLDivElement;
+  const pkgDetail = document.getElementById("pkg-selected-detail") as HTMLDivElement;
+
+  const overlay = document.getElementById("review-overlay") as HTMLDivElement;
+  const reviewList = document.getElementById("review-list") as HTMLDivElement;
+  const reviewError = document.getElementById("review-error") as HTMLDivElement;
+  const reviewBack = document.getElementById("review-back") as HTMLButtonElement;
+  const reviewConfirm = document.getElementById("review-confirm") as HTMLButtonElement;
+
+  let packagesData: any[] = [];
+  let pendingData: Record<string, string> = {};
+
+  function showPkgCard(id: string) {
+    const pkg = packagesData.find((p: any) => p.id === id);
+    if (pkg) {
+      const price = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(pkg.price));
+      pkgName.textContent = pkg.name;
+      pkgDetail.textContent = `${pkg.downloadMbps ?? pkg.speed} Mbps • ${price}/bulan`;
+      pkgInfo.hidden = false;
+    } else {
+      pkgInfo.hidden = true;
+    }
+  }
+
+  function getPkgName(id: string): string {
+    const pkg = packagesData.find((p: any) => p.id === id);
+    return pkg ? pkg.name : "-";
+  }
+
+  function getPkgPrice(id: string): string {
+    const pkg = packagesData.find((p: any) => p.id === id);
+    if (!pkg) return "-";
+    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(pkg.price)) + "/bulan";
+  }
+
+  packageSelect.addEventListener("change", () => showPkgCard(packageSelect.value));
+
+  phoneInput.addEventListener("blur", () => {
+    let val = phoneInput.value.replace(/[^0-9]/g, "");
+    if (val.startsWith("0")) val = "62" + val.slice(1);
+    else if (val.startsWith("8")) val = "62" + val;
+    phoneInput.value = val;
+  });
+
+  function clearErrors() {
+    document.querySelectorAll(".field-error").forEach((el) => (el.textContent = ""));
+    document.querySelectorAll(".field-input").forEach((el) => el.classList.remove("field-input-error"));
+    formError.hidden = true;
+  }
+
+  function showFieldError(field: string, message: string) {
+    const errEl = document.getElementById(`err-${field}`);
+    const inputEl = document.getElementById(field);
+    if (errEl) errEl.textContent = message;
+    if (inputEl) inputEl.classList.add("field-input-error");
+  }
+
+  function validateForm(data: Record<string, string>): boolean {
+    let valid = true;
+    clearErrors();
+
+    if (!data.full_name?.trim()) { showFieldError("full_name", "Nama lengkap wajib diisi"); valid = false; }
+
+    const phone = data.phone?.replace(/[^0-9]/g, "") ?? "";
+    if (!phone) { showFieldError("phone", "Nomor WhatsApp wajib diisi"); valid = false; }
+    else if (phone.length < 10 || phone.length > 15) { showFieldError("phone", "Nomor tidak valid (10-15 digit)"); valid = false; }
+
+    if (data.email && !/@.+\./.test(data.email)) { showFieldError("email", "Format email tidak valid"); valid = false; }
+    if (!data.package_id) { showFieldError("package_id", "Pilih paket terlebih dahulu"); valid = false; }
+    if (!data.address?.trim()) { showFieldError("address", "Alamat pemasangan wajib diisi"); valid = false; }
+
+    return valid;
+  }
+
+  // Show review modal
+  function openReview(data: Record<string, string>) {
+    const items = [
+      ["Paket", getPkgName(data.package_id)],
+      ["Harga", getPkgPrice(data.package_id)],
+      ["Nama", data.full_name],
+      ["WhatsApp", data.phone],
+      ["Email", data.email || "-"],
+      ["Alamat", data.address],
+      ["Catatan", data.notes || "-"],
+    ];
+    reviewList.innerHTML = items.map(([label, val]) =>
+      `<div style="display:grid;grid-template-columns:90px 1fr;padding:0.55rem 0;border-bottom:1px solid rgba(151,174,200,0.1);align-items:baseline"><span style="font-size:0.78rem;color:var(--text-300);font-weight:600">${label}</span><span style="font-size:0.85rem;color:var(--text-50);font-weight:700;word-break:break-word">${val}</span></div>`
+    ).join("");
+    reviewError.hidden = true;
+    overlay.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeReview() {
+    overlay.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  reviewBack.addEventListener("click", closeReview);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeReview(); });
+
+  // Submit handler: validate → open review
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data: Record<string, string> = {};
+    formData.forEach((value, key) => { data[key] = String(value).trim(); });
+    if (!validateForm(data)) return;
+    pendingData = data;
+    openReview(data);
+  });
+
+  // Confirm submit
+  reviewConfirm.addEventListener("click", async () => {
+    reviewConfirm.disabled = true;
+    reviewConfirm.textContent = "Mengirim...";
+    reviewError.hidden = true;
+
+    try {
+      const body: any = {
+        full_name: pendingData.full_name,
+        phone: pendingData.phone.replace(/[^0-9]/g, ""),
+        address: pendingData.address,
+        package_id: pendingData.package_id,
+      };
+      if (pendingData.email) body.email = pendingData.email;
+      if (pendingData.notes) body.notes = pendingData.notes;
+
+      const res = await fetch(`${apiBase}/v1/public/customer-registrations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+
+      if (res.ok) {
+        window.location.href = "/register/success";
+      } else {
+        reviewError.textContent = result.error ?? "Gagal mengirim pendaftaran.";
+        reviewError.hidden = false;
+      }
+    } catch {
+      reviewError.textContent = "Gagal terhubung ke server. Periksa koneksi internet.";
+      reviewError.hidden = false;
+    } finally {
+      reviewConfirm.disabled = false;
+      reviewConfirm.textContent = "Ya, Kirim Pendaftaran";
+    }
+  });
+
+  async function loadPackages() {
+    const preselected = new URLSearchParams(window.location.search).get("package");
+    try {
+      const res = await fetch(`${apiBase}/v1/public/packages`);
+      if (!res.ok) throw new Error();
+      const body = await res.json();
+      packagesData = body.data ?? [];
+      packageSelect.innerHTML = '<option value="">Pilih paket...</option>';
+      packagesData.forEach((pkg: any) => {
+        const price = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(pkg.price));
+        const opt = document.createElement("option");
+        opt.value = pkg.id;
+        opt.textContent = `${pkg.name} — ${pkg.downloadMbps ?? pkg.speed} Mbps — ${price}/bln`;
+        packageSelect.appendChild(opt);
+      });
+      if (preselected) {
+        packageSelect.value = preselected;
+        if (packageSelect.value === preselected) showPkgCard(preselected);
+      }
+    } catch {
+      packageSelect.innerHTML = '<option value="">Gagal memuat paket</option>';
+    }
+  }
+
+  loadPackages();
+</script>
+
+<style>
+  .register-section { padding-top: 7rem; padding-bottom: 4rem; min-height: calc(100vh - 80px); }
+
+  .register-title {
+    text-align: center;
+    font-size: clamp(1.4rem, 1.2rem + 1vw, 2rem);
+    font-weight: 900;
+    color: var(--text-50);
+    margin-bottom: 1.5rem;
+  }
+
+  .register-card { padding: 1.5rem; max-width: 600px; margin-inline: auto; }
+  .register-form { display: grid; gap: 1.25rem; }
+
+  .pkg-select-card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(94, 234, 212, 0.2);
+    background: rgba(94, 234, 212, 0.04);
+    display: grid;
+    gap: 0.5rem;
+  }
+  .pkg-selected-info {
+    padding: 0.6rem 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(4, 10, 20, 0.5);
+    border: 1px solid rgba(151, 174, 200, 0.12);
+  }
+  .pkg-selected-name { color: var(--text-50); font-size: 0.95rem; font-weight: 800; }
+  .pkg-selected-detail { color: var(--accent-400); font-size: 0.82rem; font-weight: 600; margin-top: 0.15rem; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .field { display: grid; gap: 0.3rem; }
+  .field-full { grid-column: 1 / -1; }
+  .field-label { font-size: 0.85rem; font-weight: 700; color: var(--text-100); }
+  .required { color: var(--accent-400); }
+  .field-hint { font-size: 0.75rem; color: var(--text-300); }
+
+  .field-input {
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-soft);
+    background: rgba(4, 10, 20, 0.4);
+    color: var(--text-50);
+    font-size: 0.9rem;
+    font-family: inherit;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field-input:focus { outline: none; border-color: var(--accent-400); box-shadow: var(--shadow-focus); }
+  .field-input::placeholder { color: var(--text-400); }
+  .field-input-error { border-color: #f87171; }
+
+  select.field-input {
+    appearance: none;
+    background-color: rgba(4, 10, 20, 0.9);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%2397aec8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.1rem;
+    padding-right: 2.5rem;
+  }
+  select.field-input option {
+    background: #0a1b31;
+    color: var(--text-50);
+  }
+
+  .field-textarea { resize: vertical; min-height: 70px; }
+  .field { align-self: start; }
+  .field-error { font-size: 0.78rem; color: #f87171; min-height: 1.1em; }
+  .form-actions { margin-top: 1rem; display: grid; gap: 0.75rem; }
+
+  .form-alert { padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.88rem; font-weight: 600; }
+  .form-alert-error { background: rgba(248, 113, 113, 0.12); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.3); }
+
+  .btn-loading { opacity: 0.7; cursor: not-allowed; pointer-events: none; }
+
+  /* Review Modal */
+  .review-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .review-overlay[hidden] { display: none; }
+  .review-modal {
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+    border-radius: 1rem;
+  }
+  .review-title { font-size: 1.15rem; font-weight: 900; color: var(--text-50); margin-bottom: 0.25rem; }
+  .review-subtitle { font-size: 0.82rem; color: var(--text-300); margin-bottom: 1rem; }
+
+  .review-list { margin: 0; padding: 0; }
+
+  .review-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+  .review-actions .btn { flex: 1; justify-content: center; font-size: 0.82rem; }
+  .btn-secondary {
+    padding: 0.65rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: transparent;
+    color: var(--text-200);
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent-400); color: var(--text-50); }
+
+  @media (max-width: 640px) {
+    .register-section { padding-top: 6rem; }
+    .register-card { padding: 1.25rem; }
+    .form-grid { grid-template-columns: 1fr; }
+    .review-actions { flex-direction: column; }
+  }
+</style>

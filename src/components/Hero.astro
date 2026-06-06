@@ -1,4 +1,5 @@
 ---
+const waNumber = import.meta.env.PUBLIC_WA_NUMBER ?? "6289624424649";
 ---
 
 <section id="home" class="hero">
@@ -18,7 +19,7 @@
             <div class="hero-actions">
                 <a href="#packages" class="btn btn-primary">Lihat Paket</a>
                 <a
-                    href="https://wa.me/6289624424649?text=Halo%20EONET%2C%20saya%20ingin%20konsultasi%20paket%20internet."
+                    href={`https://wa.me/${waNumber}?text=Halo%20EONET%2C%20saya%20ingin%20konsultasi%20paket%20internet.`}
                     class="btn btn-secondary"
                     target="_blank"
                     rel="noreferrer"

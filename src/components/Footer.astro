@@ -2,113 +2,19 @@
 
 ---
 
-<footer id="contact" class="footer">
+<footer class="footer">
     <div class="container">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <h2 class="footer-logo">
-                    EONET <span class="logo-sub">CONNECTION</span>
-                </h2>
-                <p class="footer-tagline">Your Network Solution Partner</p>
-            </div>
-
-            <div class="footer-contact surface-panel">
-                <div class="eyebrow">Langkah berikutnya</div>
-                <h3>Sudah menemukan paket yang cocok?</h3>
-                <p class="footer-cta-copy">
-                    Konsultasikan kebutuhan internet Anda lewat WhatsApp resmi
-                    EONET untuk cek area dan langkah pemasangan.
-                </p>
-                <a
-                    href="https://wa.me/6289624424649?text=Halo%20EONET%2C%20saya%20sudah%20melihat%20paket%20di%20website%20dan%20ingin%20konsultasi%20pemasangan."
-                    class="btn btn-primary contact-link"
-                    target="_blank"
-                    rel="noreferrer"
-                >
-                    Konsultasi via WhatsApp
-                </a>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            <p>&copy; 2026 EONET Connection x MMS. All rights reserved.</p>
-        </div>
+        <p>&copy; 2026 EONET Connection. All rights reserved.</p>
     </div>
 </footer>
 
 <style>
     .footer {
         background: #000;
-        padding: var(--space-3xl) 0 var(--space-lg);
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .footer-content {
-        display: grid;
-        grid-template-columns: minmax(0, 0.8fr) minmax(280px, 1fr);
-        align-items: stretch;
-        margin-bottom: var(--space-3xl);
-        gap: var(--space-xl);
-    }
-
-    .footer-logo {
-        font-size: 2rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-        letter-spacing: -1px;
-    }
-
-    .logo-sub {
-        font-weight: 300;
-        opacity: 0.7;
-    }
-
-    .footer-tagline {
-        color: var(--accent-300);
-        font-weight: 600;
-        font-style: italic;
-    }
-
-    .footer-contact {
-        display: grid;
-        gap: var(--space-md);
-        padding: var(--space-xl);
-    }
-
-    .footer-contact h3 {
-        font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.5rem);
-        max-width: 16ch;
-    }
-
-    .footer-cta-copy {
-        color: var(--text-200);
-        max-width: 58ch;
-    }
-
-    .contact-link {
-        width: fit-content;
-        min-width: min(100%, 240px);
-    }
-
-    .footer-bottom {
+        padding: 1.25rem 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
         text-align: center;
-        padding-top: 2rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        color: var(--color-text-muted);
-        font-size: 0.9rem;
-    }
-
-    @media (max-width: 768px) {
-        .footer-content {
-            grid-template-columns: 1fr;
-        }
-
-        .footer-contact {
-            padding: var(--space-lg);
-        }
-
-        .contact-link {
-            width: 100%;
-        }
+        color: var(--text-400);
+        font-size: 0.82rem;
     }
 </style>

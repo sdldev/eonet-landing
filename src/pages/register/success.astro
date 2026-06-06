@@ -1,0 +1,74 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+---
+
+<Layout title="Pendaftaran Berhasil — EONET">
+  <Header />
+  <main>
+    <section class="success-section">
+      <div class="container">
+        <div class="success-card surface-panel">
+          <div class="success-icon">✓</div>
+          <h1 class="success-title">Pendaftaran Berhasil!</h1>
+          <p class="success-message">
+            Data Anda telah kami terima dan akan di-review oleh tim EONET.
+            Kami akan menghubungi Anda melalui WhatsApp dalam <strong>1×24 jam kerja</strong> untuk konfirmasi jadwal pemasangan.
+          </p>
+          <a href="/" class="btn btn-primary">Kembali ke Beranda</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .success-section {
+    padding-top: 8rem;
+    padding-bottom: 4rem;
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+  }
+
+  .success-card {
+    max-width: 480px;
+    margin-inline: auto;
+    padding: 2rem;
+    text-align: center;
+    display: grid;
+    gap: 1rem;
+    justify-items: center;
+  }
+
+  .success-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-500), #38bdf8);
+    color: var(--accent-ink, #0a1b31);
+    font-size: 1.5rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(45, 212, 191, 0.25);
+  }
+
+  .success-title {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--text-50);
+  }
+
+  .success-message {
+    font-size: 0.9rem;
+    color: var(--text-200);
+    line-height: 1.6;
+  }
+  .success-message strong {
+    color: var(--accent-300);
+  }
+</style>

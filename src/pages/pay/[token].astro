@@ -1,0 +1,843 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:5000";
+const midtransClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? "";
+const midtransIsProduction = import.meta.env.PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
+const snapJsUrl = midtransIsProduction
+    ? "https://app.midtrans.com/snap/snap.js"
+    : "https://app.sandbox.midtrans.com/snap/snap.js";
+
+const { token } = Astro.params;
+
+type Invoice = {
+    invoice_number: string;
+    customer_name: string;
+    customer_name_masked: string;
+    customer_phone_masked: string;
+    package_label: string;
+    package_download_mbps: number | null;
+    package_upload_mbps: number | null;
+    period_start: string;
+    period_end: string;
+    due_date: string;
+    subtotal: string;
+    tax: string;
+    total: string;
+    paid_amount: string;
+    status: string;
+    can_pay: boolean;
+    company: { name?: string; support_phone?: string } | null;
+};
+
+let invoice: Invoice | null = null;
+let errorMessage: string | null = null;
+
+if (token) {
+    try {
+        const res = await fetch(`${apiBase}/v1/public/invoice/${encodeURIComponent(token)}`);
+        if (res.ok) {
+            const json = (await res.json()) as { data: Invoice };
+            invoice = json.data;
+        } else if (res.status === 404) {
+            errorMessage = "Invoice tidak ditemukan. Pastikan link yang Anda buka benar.";
+        } else if (res.status === 429) {
+            errorMessage = "Terlalu banyak permintaan. Silakan coba lagi beberapa saat.";
+        } else {
+            errorMessage = "Gagal memuat data invoice. Silakan coba lagi.";
+        }
+    } catch {
+        errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+    }
+} else {
+    errorMessage = "Token tidak valid.";
+}
+
+function formatRupiah(amount: string | number) {
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(Number(amount));
+}
+
+function formatDate(dateStr: string | null | undefined) {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
+}
+
+function formatPeriod(start: string, end: string) {
+    const s = new Date(start);
+    const e = new Date(end);
+    const month = s.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+    return `${month} (${s.getUTCDate()}–${e.getUTCDate()})`;
+}
+
+const statusLabels: Record<string, string> = {
+    paid: "Lunas",
+    issued: "Belum Bayar",
+    overdue: "Jatuh Tempo",
+    partially_paid: "Sebagian",
+    cancelled: "Dibatalkan",
+    draft: "Draft",
+};
+
+const remaining = invoice
+    ? Number(invoice.total) - Number(invoice.paid_amount)
+    : 0;
+
+const pageTitle = invoice
+    ? `Bayar Invoice ${invoice.invoice_number} — EONET`
+    : "Pembayaran Invoice — EONET";
+---
+
+<Layout title={pageTitle}>
+    <Header />
+    <main>
+        <section class="pay-section">
+            <div class="container">
+                {errorMessage && (
+                    <div class="surface-panel state-card state-error">
+                        <div class="state-icon" aria-hidden="true">⚠️</div>
+                        <h1 class="state-title">Tidak Dapat Memuat Invoice</h1>
+                        <p class="state-message">{errorMessage}</p>
+                        <a href="/" class="btn btn-secondary">Kembali ke Beranda</a>
+                    </div>
+                )}
+
+                {invoice && (
+                    <div
+                        id="pay-root"
+                        data-api-base={apiBase}
+                        data-token={token}
+                        data-snap-url={snapJsUrl}
+                        data-client-key={midtransClientKey}
+                        data-status={invoice.status}
+                        data-can-pay={String(invoice.can_pay)}
+                    >
+                        {/* Already paid state */}
+                        {invoice.status === "paid" && (
+                            <div class="surface-panel state-card state-success" id="state-paid">
+                                <div class="state-icon success" aria-hidden="true">✓</div>
+                                <h1 class="state-title">Tagihan Sudah Lunas</h1>
+                                <p class="state-message">
+                                    Invoice <strong>{invoice.invoice_number}</strong> telah lunas. Terima kasih atas pembayaran Anda.
+                                </p>
+                                <dl class="state-detail">
+                                    <div><dt>Total</dt><dd>{formatRupiah(invoice.total)}</dd></div>
+                                    <div><dt>Periode</dt><dd>{formatPeriod(invoice.period_start, invoice.period_end)}</dd></div>
+                                </dl>
+                            </div>
+                        )}
+
+                        {/* Cancelled state */}
+                        {invoice.status === "cancelled" && (
+                            <div class="surface-panel state-card state-warn">
+                                <div class="state-icon warn" aria-hidden="true">×</div>
+                                <h1 class="state-title">Invoice Dibatalkan</h1>
+                                <p class="state-message">
+                                    Invoice ini telah dibatalkan. Silakan hubungi customer service untuk informasi lebih lanjut.
+                                </p>
+                                {invoice.company?.support_phone && (
+                                    <a class="btn btn-primary" href={`https://wa.me/${invoice.company.support_phone.replace(/\D/g, "")}`}>
+                                        Hubungi Customer Service
+                                    </a>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Pending payment — main flow */}
+                        {invoice.can_pay && (
+                            <div class="pay-grid">
+                                <div class="surface-panel detail-card">
+                                    <div class="detail-header">
+                                        <div>
+                                            <div class="eyebrow">Tagihan</div>
+                                            <h1 class="invoice-number">{invoice.invoice_number}</h1>
+                                        </div>
+                                        <span class={`status-badge status-${invoice.status}`}>
+                                            {statusLabels[invoice.status] ?? invoice.status}
+                                        </span>
+                                    </div>
+
+                                    <div class="amount-row">
+                                        <span class="amount-label">Total Tagihan</span>
+                                        <span class="amount-value">{formatRupiah(invoice.total)}</span>
+                                    </div>
+
+                                    {Number(invoice.paid_amount) > 0 && (
+                                        <div class="amount-row amount-paid">
+                                            <span class="amount-label">Sudah Dibayar</span>
+                                            <span class="amount-value">{formatRupiah(invoice.paid_amount)}</span>
+                                        </div>
+                                    )}
+
+                                    {remaining > 0 && Number(invoice.paid_amount) > 0 && (
+                                        <div class="amount-row amount-remaining">
+                                            <span class="amount-label">Sisa Tagihan</span>
+                                            <span class="amount-value">{formatRupiah(remaining)}</span>
+                                        </div>
+                                    )}
+
+                                    <hr class="divider" />
+
+                                    <dl class="info-list">
+                                        <div class="info-row">
+                                            <dt>Paket</dt>
+                                            <dd>{invoice.package_label}</dd>
+                                        </div>
+                                        {invoice.package_download_mbps && (
+                                            <div class="info-row">
+                                                <dt>Kecepatan</dt>
+                                                <dd>{invoice.package_download_mbps} Mbps ↓ / {invoice.package_upload_mbps ?? invoice.package_download_mbps} Mbps ↑</dd>
+                                            </div>
+                                        )}
+                                        <div class="info-row">
+                                            <dt>Periode</dt>
+                                            <dd>{formatPeriod(invoice.period_start, invoice.period_end)}</dd>
+                                        </div>
+                                        <div class="info-row">
+                                            <dt>Jatuh Tempo</dt>
+                                            <dd class={invoice.status === "overdue" ? "text-danger" : ""}>{formatDate(invoice.due_date)}</dd>
+                                        </div>
+                                    </dl>
+                                </div>
+
+                                {/* Confirmation card */}
+                                <div class="surface-panel confirm-card" id="confirm-card">
+                                    <h2 class="card-title">Konfirmasi Identitas</h2>
+                                    <p class="confirm-hint">
+                                        Pastikan data berikut sesuai dengan Anda sebelum melanjutkan pembayaran.
+                                    </p>
+                                    <dl class="info-list">
+                                        <div class="info-row">
+                                            <dt>Nama</dt>
+                                            <dd>{invoice.customer_name_masked}</dd>
+                                        </div>
+                                        <div class="info-row">
+                                            <dt>No. WhatsApp</dt>
+                                            <dd>{invoice.customer_phone_masked}</dd>
+                                        </div>
+                                    </dl>
+
+                                    <div class="alert alert-info">
+                                        <strong>Catatan:</strong> Data sebagian disamarkan untuk keamanan. Jika data di atas tidak sesuai, jangan lanjutkan pembayaran dan hubungi customer service.
+                                    </div>
+
+                                    <div class="confirm-actions">
+                                        <button id="pay-button" class="btn btn-primary btn-large full-width" type="button">
+                                            <span class="btn-text">Ya, Saya Konfirmasi & Bayar Sekarang</span>
+                                        </button>
+                                        <p class="payment-method-hint">
+                                            Anda akan diarahkan ke pembayaran aman via Midtrans (kartu kredit, e-wallet, virtual account, dll).
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Processing/success/error overlay */}
+                                <div id="status-overlay" class="status-overlay" hidden>
+                                    <div class="surface-panel status-card">
+                                        <div id="status-content"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </section>
+    </main>
+    <Footer />
+</Layout>
+
+<script is:inline define:vars={{ snapJsUrl, midtransClientKey }}>
+    // Load Snap.js dynamically
+    (function loadSnap() {
+        if (!midtransClientKey) return;
+        if (document.querySelector('script[data-eonet-snap]')) return;
+        const script = document.createElement("script");
+        script.src = snapJsUrl;
+        script.dataset.clientKey = midtransClientKey;
+        script.dataset.eonetSnap = "true";
+        script.async = true;
+        document.head.appendChild(script);
+    })();
+</script>
+
+<script>
+    type SnapCallbacks = {
+        onSuccess?: (result: any) => void;
+        onPending?: (result: any) => void;
+        onError?: (result: any) => void;
+        onClose?: () => void;
+    };
+
+    interface Window {
+        snap?: { pay: (token: string, callbacks?: SnapCallbacks) => void };
+    }
+
+    const root = document.getElementById("pay-root");
+    if (root) {
+        const apiBase = root.dataset.apiBase!;
+        const token = root.dataset.token!;
+        const canPay = root.dataset.canPay === "true";
+
+        const payButton = document.getElementById("pay-button") as HTMLButtonElement | null;
+        const confirmCard = document.getElementById("confirm-card");
+        const overlay = document.getElementById("status-overlay") as HTMLDivElement | null;
+        const statusContent = document.getElementById("status-content");
+
+        function setButtonLoading(loading: boolean) {
+            if (!payButton) return;
+            payButton.disabled = loading;
+            const text = payButton.querySelector(".btn-text");
+            if (text) text.textContent = loading ? "Memproses..." : "Ya, Saya Konfirmasi & Bayar Sekarang";
+        }
+
+        function showOverlay(html: string) {
+            if (!overlay || !statusContent) return;
+            statusContent.innerHTML = html;
+            overlay.hidden = false;
+        }
+
+        function hideOverlay() {
+            if (overlay) overlay.hidden = true;
+        }
+
+        function formatRupiah(amount: number | string) {
+            return new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(Number(amount));
+        }
+
+        async function pollPaymentStatus(maxAttempts = 5, intervalMs = 3000) {
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                await new Promise((resolve) => setTimeout(resolve, intervalMs));
+                try {
+                    const res = await fetch(`${apiBase}/v1/public/invoice/${encodeURIComponent(token)}`);
+                    if (res.ok) {
+                        const json = await res.json();
+                        const inv = json.data;
+                        if (inv.status === "paid") {
+                            showOverlay(`
+                                <div class="state-icon success">✓</div>
+                                <h2 class="state-title">Pembayaran Berhasil</h2>
+                                <p class="state-message">
+                                    Invoice <strong>${inv.invoice_number}</strong> telah lunas.<br/>
+                                    Total dibayar: <strong>${formatRupiah(inv.total)}</strong>
+                                </p>
+                                <p class="state-hint">
+                                    Konfirmasi pembayaran juga akan dikirim ke WhatsApp Anda.
+                                </p>
+                                <button class="btn btn-secondary" onclick="window.location.reload()">
+                                    Tutup
+                                </button>
+                            `);
+                            return true;
+                        }
+                    }
+                } catch {
+                    // continue polling
+                }
+            }
+            return false;
+        }
+
+        async function startPayment() {
+            if (!canPay) return;
+            setButtonLoading(true);
+
+            try {
+                const res = await fetch(`${apiBase}/v1/public/pay/${encodeURIComponent(token)}/midtrans`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    showOverlay(`
+                        <div class="state-icon error">×</div>
+                        <h2 class="state-title">Gagal Memulai Pembayaran</h2>
+                        <p class="state-message">${(err as any).error?.message ?? "Silakan coba lagi beberapa saat."}</p>
+                        <button class="btn btn-secondary" id="retry-close">Tutup</button>
+                    `);
+                    document.getElementById("retry-close")?.addEventListener("click", hideOverlay);
+                    setButtonLoading(false);
+                    return;
+                }
+
+                const json = await res.json();
+                const snapToken = json.data.snap_token;
+
+                if (!(window as any).snap) {
+                    showOverlay(`
+                        <div class="state-icon error">×</div>
+                        <h2 class="state-title">Snap Belum Siap</h2>
+                        <p class="state-message">Silakan refresh halaman dan coba lagi.</p>
+                        <button class="btn btn-secondary" id="retry-close">Tutup</button>
+                    `);
+                    document.getElementById("retry-close")?.addEventListener("click", hideOverlay);
+                    setButtonLoading(false);
+                    return;
+                }
+
+                (window as any).snap.pay(snapToken, {
+                    onSuccess: async () => {
+                        showOverlay(`
+                            <div class="state-icon loading">⏳</div>
+                            <h2 class="state-title">Memverifikasi Pembayaran...</h2>
+                            <p class="state-message">Mohon tunggu sebentar.</p>
+                        `);
+                        const confirmed = await pollPaymentStatus();
+                        if (!confirmed) {
+                            showOverlay(`
+                                <div class="state-icon success">✓</div>
+                                <h2 class="state-title">Pembayaran Diterima</h2>
+                                <p class="state-message">
+                                    Pembayaran sedang diverifikasi. Anda akan menerima konfirmasi via WhatsApp dalam beberapa menit.
+                                </p>
+                                <button class="btn btn-secondary" onclick="window.location.reload()">
+                                    Refresh
+                                </button>
+                            `);
+                        }
+                    },
+                    onPending: () => {
+                        showOverlay(`
+                            <div class="state-icon warn">⏳</div>
+                            <h2 class="state-title">Pembayaran Pending</h2>
+                            <p class="state-message">
+                                Pembayaran Anda sedang diproses. Setelah berhasil, kami akan kirim konfirmasi via WhatsApp.
+                            </p>
+                            <button class="btn btn-secondary" onclick="window.location.reload()">
+                                Tutup
+                            </button>
+                        `);
+                    },
+                    onError: () => {
+                        hideOverlay();
+                        setButtonLoading(false);
+                        showOverlay(`
+                            <div class="state-icon error">×</div>
+                            <h2 class="state-title">Pembayaran Gagal</h2>
+                            <p class="state-message">Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.</p>
+                            <button class="btn btn-secondary" id="retry-close-err">Tutup</button>
+                        `);
+                        document.getElementById("retry-close-err")?.addEventListener("click", hideOverlay);
+                    },
+                    onClose: () => {
+                        setButtonLoading(false);
+                    },
+                });
+            } catch {
+                showOverlay(`
+                    <div class="state-icon error">×</div>
+                    <h2 class="state-title">Terjadi Kesalahan</h2>
+                    <p class="state-message">Tidak dapat terhubung ke server. Silakan periksa koneksi Anda.</p>
+                    <button class="btn btn-secondary" id="retry-close-net">Tutup</button>
+                `);
+                document.getElementById("retry-close-net")?.addEventListener("click", hideOverlay);
+                setButtonLoading(false);
+            }
+        }
+
+        payButton?.addEventListener("click", startPayment);
+    }
+</script>
+
+<style>
+    .pay-section {
+        padding-top: 7.5rem;
+        padding-bottom: 4rem;
+        min-height: 80vh;
+    }
+
+    /* Base button styles (matching landing system) */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1.2rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 0.95rem;
+        font-family: inherit;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all var(--transition-base);
+        text-decoration: none;
+        line-height: 1.2;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: var(--accent-500);
+        color: var(--accent-ink);
+        border-color: var(--accent-500);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: var(--accent-400);
+        border-color: var(--accent-400);
+    }
+
+    .btn-secondary {
+        background: rgba(151, 174, 200, 0.1);
+        color: var(--text-100);
+        border-color: var(--border-soft);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background: rgba(151, 174, 200, 0.18);
+    }
+
+    .btn-large {
+        padding: 0.95rem 1.5rem;
+        font-size: 1.02rem;
+    }
+
+    .full-width {
+        width: 100%;
+    }
+
+    /* State cards (success/error/cancelled) */
+    .state-card {
+        max-width: 540px;
+        margin-inline: auto;
+        padding: var(--space-2xl);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .state-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 2rem;
+        font-weight: 700;
+        background: rgba(151, 174, 200, 0.12);
+        color: var(--text-200);
+    }
+
+    .state-icon.success {
+        background: rgba(52, 211, 153, 0.15);
+        color: #6ee7b7;
+    }
+
+    .state-icon.warn {
+        background: rgba(251, 191, 36, 0.15);
+        color: #fcd34d;
+    }
+
+    .state-icon.error {
+        background: rgba(248, 113, 113, 0.15);
+        color: #fca5a5;
+    }
+
+    .state-icon.loading {
+        background: rgba(94, 234, 212, 0.15);
+        color: var(--accent-300);
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .state-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text-50);
+    }
+
+    .state-message {
+        color: var(--text-200);
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    .state-hint {
+        font-size: 0.88rem;
+        color: var(--text-300);
+        margin: 0;
+    }
+
+    .state-detail {
+        display: grid;
+        gap: var(--space-xs);
+        margin: var(--space-md) 0 0 0;
+        width: 100%;
+    }
+
+    .state-detail > div {
+        display: flex;
+        justify-content: space-between;
+        padding: var(--space-xs) var(--space-md);
+        background: rgba(151, 174, 200, 0.05);
+        border-radius: var(--radius-sm);
+    }
+
+    .state-detail dt {
+        color: var(--text-300);
+        font-size: 0.85rem;
+    }
+
+    .state-detail dd {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    /* Pay grid (detail + confirm) */
+    .pay-grid {
+        display: grid;
+        gap: var(--space-lg);
+        max-width: 720px;
+        margin-inline: auto;
+    }
+
+    /* Detail card */
+    .detail-card {
+        padding: var(--space-xl);
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+
+    .eyebrow {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--accent-300);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: var(--space-xs);
+    }
+
+    .invoice-number {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text-50);
+        word-break: break-all;
+    }
+
+    .status-badge {
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .status-issued { background: rgba(94, 234, 212, 0.12); color: var(--accent-300); }
+    .status-overdue { background: rgba(248, 113, 113, 0.12); color: #fca5a5; }
+    .status-partially_paid { background: rgba(251, 191, 36, 0.12); color: #fcd34d; }
+    .status-paid { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; }
+
+    /* Amount rows */
+    .amount-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) 0;
+        gap: var(--space-md);
+    }
+
+    .amount-label {
+        color: var(--text-300);
+        font-size: 0.92rem;
+    }
+
+    .amount-value {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--text-50);
+    }
+
+    .amount-paid .amount-value {
+        font-size: 1.1rem;
+        color: #6ee7b7;
+    }
+
+    .amount-remaining .amount-value {
+        font-size: 1.4rem;
+        color: #fca5a5;
+    }
+
+    .divider {
+        border: 0;
+        border-top: 1px solid var(--border-soft);
+        margin: var(--space-md) 0;
+    }
+
+    /* Info list */
+    .info-list {
+        display: grid;
+        gap: var(--space-sm);
+        margin: 0;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-md);
+        padding: var(--space-xs) 0;
+        border-bottom: 1px solid rgba(151, 174, 200, 0.08);
+    }
+
+    .info-row:last-child {
+        border-bottom: 0;
+    }
+
+    .info-row dt {
+        font-size: 0.85rem;
+        color: var(--text-300);
+        flex-shrink: 0;
+    }
+
+    .info-row dd {
+        margin: 0;
+        font-weight: 600;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .text-danger { color: #fca5a5; }
+
+    /* Confirm card */
+    .confirm-card {
+        padding: var(--space-xl);
+    }
+
+    .card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-200);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 var(--space-sm) 0;
+    }
+
+    .confirm-hint {
+        color: var(--text-300);
+        font-size: 0.92rem;
+        margin: 0 0 var(--space-md) 0;
+    }
+
+    .alert {
+        margin-top: var(--space-md);
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
+
+    .alert-info {
+        background: rgba(94, 234, 212, 0.08);
+        color: var(--text-200);
+        border: 1px solid rgba(94, 234, 212, 0.2);
+    }
+
+    .alert strong {
+        color: var(--accent-300);
+    }
+
+    .confirm-actions {
+        margin-top: var(--space-lg);
+        display: grid;
+        gap: var(--space-sm);
+    }
+
+    .payment-method-hint {
+        font-size: 0.78rem;
+        color: var(--text-400);
+        margin: 0;
+        text-align: center;
+        line-height: 1.5;
+    }
+
+    /* Status overlay */
+    .status-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 11, 24, 0.78);
+        backdrop-filter: blur(6px);
+        z-index: 2000;
+        display: grid;
+        place-items: center;
+        padding: var(--space-md);
+    }
+
+    .status-card {
+        max-width: 460px;
+        width: 100%;
+        padding: var(--space-2xl) var(--space-xl);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .status-card .state-icon {
+        margin-bottom: var(--space-xs);
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .pay-section {
+            padding-top: 6.5rem;
+        }
+
+        .detail-card,
+        .confirm-card {
+            padding: var(--space-lg);
+        }
+
+        .state-card {
+            padding: var(--space-xl) var(--space-lg);
+        }
+
+        .invoice-number {
+            font-size: 1.15rem;
+        }
+
+        .amount-value {
+            font-size: 1.4rem;
+        }
+
+        .detail-header {
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+    }
+</style>

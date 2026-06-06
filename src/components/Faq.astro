@@ -1,0 +1,116 @@
+---
+const waNumber = import.meta.env.PUBLIC_WA_NUMBER ?? "6289624424649";
+const faqs = [
+    { question: "Bagaimana cara cek area layanan?", answer: "Pilih paket dari website, lalu kirim lokasi pemasangan lewat WhatsApp resmi agar tim EONET mengecek ketersediaan area." },
+    { question: "Apa langkah setelah memilih paket?", answer: "Setelah membandingkan paket, konsultasikan kebutuhan rumah atau bisnis Anda untuk konfirmasi paket, area, dan jadwal pemasangan." },
+    { question: "Apakah bisa konsultasi paket dulu?", answer: "Bisa. Gunakan tombol konsultasi pada kartu paket agar percakapan WhatsApp langsung sesuai paket yang Anda lihat." },
+    { question: "Apakah biaya langsung final di website?", answer: "Harga paket tampil di website sebagai bahan perbandingan. Detail area, kebutuhan teknis, dan konfirmasi awal tetap dicek sebelum pemasangan." },
+    { question: "Berapa lama proses pemasangan?", answer: "Setelah area dikonfirmasi dan jadwal disepakati, pemasangan umumnya selesai dalam 1–3 hari kerja tergantung kondisi lokasi." },
+];
+---
+
+<section id="faq" class="faq-section section">
+    <div class="container">
+        <div class="section-header faq-header">
+            <div class="eyebrow">Pertanyaan umum</div>
+            <h2 class="section-title">Yang sering ditanyakan</h2>
+            <p class="section-subtitle">Temukan jawaban seputar layanan, pemasangan, dan area coverage EONET.</p>
+        </div>
+
+        <div class="faq-list" role="list">
+            {faqs.map((faq, i) => (
+                <details class="faq-item surface-panel" role="listitem">
+                    <summary class="faq-question">
+                        <span>{faq.question}</span>
+                        <svg class="faq-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </summary>
+                    <p class="faq-answer">{faq.answer}</p>
+                </details>
+            ))}
+        </div>
+
+        <div class="faq-cta">
+            <p>Masih ada pertanyaan lain?</p>
+            <a href={`https://wa.me/${waNumber}?text=Halo%20EONET%2C%20saya%20ingin%20bertanya%20tentang%20layanan.`} class="btn btn-ghost" target="_blank" rel="noreferrer">
+                Tanya via WhatsApp
+                <span aria-hidden="true">→</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<style>
+    .faq-section {
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        background: linear-gradient(180deg, rgba(7, 18, 35, 0.6), rgba(4, 10, 20, 0.95));
+    }
+
+    .faq-header { justify-items: center; text-align: center; }
+    .faq-header .section-title { max-width: 20ch; }
+
+    .faq-list {
+        display: grid;
+        gap: 0.75rem;
+        max-width: 720px;
+        margin-inline: auto;
+    }
+
+    .faq-item {
+        padding: 0;
+        overflow: hidden;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .faq-item[open] {
+        border-color: rgba(94, 234, 212, 0.3);
+        box-shadow: 0 8px 32px rgba(45, 212, 191, 0.06);
+    }
+
+    .faq-question {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.15rem 1.35rem;
+        cursor: pointer;
+        list-style: none;
+        color: var(--text-50);
+        font-size: 1rem;
+        font-weight: 700;
+        transition: color 0.2s ease;
+    }
+    .faq-question::-webkit-details-marker { display: none; }
+    .faq-question::marker { content: ""; }
+    .faq-question:hover { color: var(--accent-300); }
+
+    .faq-chevron {
+        flex-shrink: 0;
+        color: var(--text-400);
+        transition: transform 0.3s ease, color 0.3s ease;
+    }
+    .faq-item[open] .faq-chevron {
+        transform: rotate(180deg);
+        color: var(--accent-400);
+    }
+
+    .faq-answer {
+        padding: 0 1.35rem 1.25rem;
+        color: var(--text-200);
+        font-size: 0.94rem;
+        line-height: 1.7;
+    }
+
+    .faq-cta {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: clamp(2rem, 4vw, 3rem);
+        text-align: center;
+    }
+    .faq-cta p {
+        color: var(--text-300);
+        font-size: 0.95rem;
+    }
+</style>
