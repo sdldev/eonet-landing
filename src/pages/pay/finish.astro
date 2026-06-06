@@ -1,0 +1,95 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:5000";
+const orderId = Astro.url.searchParams.get("order_id") ?? "";
+const transactionStatus = Astro.url.searchParams.get("transaction_status") ?? "";
+
+// Lookup invoice payment token from order_id (format: PAY-{invoiceId}-{timestamp})
+let paymentToken = "";
+if (orderId) {
+    const parts = orderId.split("-");
+    // invoiceId is between first and last dash segment
+    const invoiceId = parts.slice(1, -1).join("-");
+    if (invoiceId) {
+        try {
+            // Query API to find invoice's payment token by checking payment record
+            const res = await fetch(`${apiBase}/v1/public/invoice-by-order/${encodeURIComponent(orderId)}`);
+            if (res.ok) {
+                const json = await res.json();
+                paymentToken = json.data?.payment_token ?? "";
+            }
+        } catch {}
+    }
+}
+
+const isSuccess = ["settlement", "capture"].includes(transactionStatus);
+const isPending = transactionStatus === "pending";
+---
+
+<Layout title="Pembayaran — EONET">
+    <Header />
+    <main>
+        <section class="finish-section">
+            <div class="container">
+                <div class="surface-panel finish-card">
+                    {isSuccess && (
+                        <div class="state-icon success">✓</div>
+                        <h1>Pembayaran Berhasil</h1>
+                        <p>Terima kasih! Pembayaran Anda telah diterima. Konfirmasi akan dikirim via WhatsApp.</p>
+                    )}
+                    {isPending && (
+                        <div class="state-icon warn">⏳</div>
+                        <h1>Pembayaran Diproses</h1>
+                        <p>Pembayaran sedang diverifikasi. Anda akan menerima konfirmasi via WhatsApp setelah selesai.</p>
+                    )}
+                    {!isSuccess && !isPending && (
+                        <div class="state-icon error">×</div>
+                        <h1>Pembayaran Tidak Berhasil</h1>
+                        <p>Silakan coba lagi atau hubungi customer service.</p>
+                    )}
+                    <a href="/" class="btn btn-secondary">Kembali ke Beranda</a>
+                </div>
+            </div>
+        </section>
+    </main>
+    <Footer />
+</Layout>
+
+<style>
+    .finish-section {
+        padding-top: 7.5rem;
+        padding-bottom: 4rem;
+        min-height: 80vh;
+        display: grid;
+        place-items: center;
+    }
+    .finish-card {
+        max-width: 480px;
+        padding: 3rem 2rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+    .state-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .state-icon.success { background: rgba(52, 211, 153, 0.15); color: #6ee7b7; }
+    .state-icon.warn { background: rgba(251, 191, 36, 0.15); color: #fcd34d; }
+    .state-icon.error { background: rgba(248, 113, 113, 0.15); color: #fca5a5; }
+    h1 { font-size: 1.4rem; margin: 0; color: var(--text-50); }
+    p { color: var(--text-200); margin: 0; line-height: 1.6; }
+    .btn { margin-top: 1rem; }
+</style>
