@@ -457,6 +457,14 @@ const pageTitle = invoice
         min-height: 80vh;
     }
 
+    /* Hide Midtrans Snap container until snap.pay() is called */
+    #snap-midtrans {
+        display: none !important;
+    }
+    #snap-midtrans.snap-show {
+        display: block !important;
+    }
+
     /* Base button styles (matching landing system) */
     .btn {
         display: inline-flex;
@@ -493,7 +501,7 @@ const pageTitle = invoice
 
     .btn-secondary {
         background: rgba(151, 174, 200, 0.1);
-        color: var(--text-100);
+        color: var(--text-200);
         border-color: var(--border-soft);
     }
 
