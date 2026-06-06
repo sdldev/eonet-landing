@@ -260,7 +260,7 @@ const pageTitle = invoice
     <Footer />
 </Layout>
 
-<script is:inline define:vars={{ snapJsUrl, midtransClientKey }}>
+<script is:inline data-cfasync="false" define:vars={{ snapJsUrl, midtransClientKey }}>
     // Load Snap.js dynamically
     (function loadSnap() {
         if (!midtransClientKey) return;
@@ -274,27 +274,16 @@ const pageTitle = invoice
     })();
 </script>
 
-<script>
-    type SnapCallbacks = {
-        onSuccess?: (result: any) => void;
-        onPending?: (result: any) => void;
-        onError?: (result: any) => void;
-        onClose?: () => void;
-    };
-
-    interface Window {
-        snap?: { pay: (token: string, callbacks?: SnapCallbacks) => void };
-    }
-
+<script is:inline data-cfasync="false">
     const root = document.getElementById("pay-root");
     if (root) {
-        const apiBase = root.dataset.apiBase!;
-        const token = root.dataset.token!;
+        const apiBase = root.dataset.apiBase;
+        const token = root.dataset.token;
         const canPay = root.dataset.canPay === "true";
 
-        const payButton = document.getElementById("pay-button") as HTMLButtonElement | null;
+        const payButton = document.getElementById("pay-button");
         const confirmCard = document.getElementById("confirm-card");
-        const overlay = document.getElementById("status-overlay") as HTMLDivElement | null;
+        const overlay = document.getElementById("status-overlay");
         const statusContent = document.getElementById("status-content");
 
         function setButtonLoading(loading: boolean) {
@@ -371,7 +360,7 @@ const pageTitle = invoice
                     showOverlay(`
                         <div class="state-icon error">×</div>
                         <h2 class="state-title">Gagal Memulai Pembayaran</h2>
-                        <p class="state-message">${(err as any).error?.message ?? "Silakan coba lagi beberapa saat."}</p>
+                        <p class="state-message">${err.error?.message ?? "Silakan coba lagi beberapa saat."}</p>
                         <button class="btn btn-secondary" id="retry-close">Tutup</button>
                     `);
                     document.getElementById("retry-close")?.addEventListener("click", hideOverlay);
@@ -382,7 +371,7 @@ const pageTitle = invoice
                 const json = await res.json();
                 const snapToken = json.data.snap_token;
 
-                if (!(window as any).snap) {
+                if (!window.snap) {
                     showOverlay(`
                         <div class="state-icon error">×</div>
                         <h2 class="state-title">Snap Belum Siap</h2>
@@ -394,7 +383,7 @@ const pageTitle = invoice
                     return;
                 }
 
-                (window as any).snap.pay(snapToken, {
+                window.snap.pay(snapToken, {
                     onSuccess: async () => {
                         showOverlay(`
                             <div class="state-icon loading">⏳</div>
