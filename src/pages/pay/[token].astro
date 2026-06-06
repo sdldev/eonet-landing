@@ -286,14 +286,14 @@ const pageTitle = invoice
         const overlay = document.getElementById("status-overlay");
         const statusContent = document.getElementById("status-content");
 
-        function setButtonLoading(loading: boolean) {
+        function setButtonLoading(loading) {
             if (!payButton) return;
             payButton.disabled = loading;
             const text = payButton.querySelector(".btn-text");
             if (text) text.textContent = loading ? "Memproses..." : "Ya, Saya Konfirmasi & Bayar Sekarang";
         }
 
-        function showOverlay(html: string) {
+        function showOverlay(html) {
             if (!overlay || !statusContent) return;
             statusContent.innerHTML = html;
             overlay.hidden = false;
@@ -303,7 +303,7 @@ const pageTitle = invoice
             if (overlay) overlay.hidden = true;
         }
 
-        function formatRupiah(amount: number | string) {
+        function formatRupiah(amount) {
             return new Intl.NumberFormat("id-ID", {
                 style: "currency",
                 currency: "IDR",
