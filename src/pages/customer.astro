@@ -130,16 +130,16 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 </Layout>
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer data-cfasync="false"></script>
-<script>
+<script is:inline data-cfasync="false">
   const apiBase = document.getElementById("auth-card")?.dataset.apiBase ?? "http://localhost:3000";
   const turnstileSiteKey = document.getElementById("turnstile-widget")?.dataset.sitekey ?? "";
 
-  const loginCard = document.getElementById("login-card")!;
-  const loginForm = document.getElementById("login-form") as HTMLFormElement;
-  const loginBtn = document.getElementById("login-btn") as HTMLButtonElement;
-  const loginError = document.getElementById("login-error") as HTMLDivElement;
-  const dashboard = document.getElementById("dashboard")!;
-  const logoutBtn = document.getElementById("logout-btn")!;
+  const loginCard = document.getElementById("login-card");
+  const loginForm = document.getElementById("login-form");
+  const loginBtn = document.getElementById("login-btn");
+  const loginError = document.getElementById("login-error");
+  const dashboard = document.getElementById("dashboard");
+  const logoutBtn = document.getElementById("logout-btn");
 
   function clearErrors() {
     document.querySelectorAll(".field-error").forEach((el) => (el.textContent = ""));
@@ -147,25 +147,25 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     loginError.hidden = true;
   }
 
-  function showFieldError(field: string, message: string) {
+  function showFieldError(field, message) {
     const errEl = document.getElementById(`err-${field}`);
     const inputEl = document.getElementById(field);
     if (errEl) errEl.textContent = message;
     if (inputEl) inputEl.classList.add("field-input-error");
   }
 
-  function setLoading(loading: boolean) {
+  function setLoading(loading) {
     loginBtn.disabled = loading;
     loginBtn.textContent = loading ? "Memeriksa..." : "Lihat Tagihan";
   }
 
-  function formatDate(dateStr: string | null | undefined) {
+  function formatDate(dateStr) {
     if (!dateStr) return "-";
     const d = new Date(dateStr);
     return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
   }
 
-  function formatRupiah(amount: string | number) {
+  function formatRupiah(amount) {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
@@ -174,8 +174,8 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     }).format(Number(amount));
   }
 
-  function statusClass(status: string) {
-    const map: Record<string, string> = {
+  function statusClass(status) {
+    const map = {
       paid: "badge-success",
       issued: "badge-info",
       overdue: "badge-danger",
@@ -186,8 +186,8 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     return map[status] ?? "badge-muted";
   }
 
-  function statusLabel(status: string) {
-    const map: Record<string, string> = {
+  function statusLabel(status) {
+    const map = {
       paid: "Lunas",
       issued: "Belum Bayar",
       overdue: "Jatuh Tempo",
@@ -293,8 +293,8 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     e.preventDefault();
     clearErrors();
 
-    const phone = (document.getElementById("phone") as HTMLInputElement).value.trim();
-    const customerNo = (document.getElementById("customer_no") as HTMLInputElement).value.trim();
+    const phone = (document.getElementById("phone")).value.trim();
+    const customerNo = (document.getElementById("customer_no")).value.trim();
 
     if (!phone) { showFieldError("phone", "Nomor HP wajib diisi"); return; }
     if (!customerNo) { showFieldError("customer_no", "Kode pelanggan wajib diisi"); return; }
@@ -302,7 +302,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
     setLoading(true);
 
     try {
-      const turnstileToken = turnstileSiteKey ? (window as any).turnstile?.getResponse?.() ?? "" : "";
+      const turnstileToken = turnstileSiteKey ? window.turnstile?.getResponse?.() ?? "" : "";
 
       const res = await fetch(`${apiBase}/v1/public/customer/auth`, {
         method: "POST",
