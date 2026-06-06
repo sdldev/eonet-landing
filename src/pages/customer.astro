@@ -131,7 +131,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
   <Footer />
 </Layout>
 
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer data-cfasync="false"></script>
 <script>
   const apiBase = document.getElementById("auth-card")?.dataset.apiBase ?? "http://localhost:3000";
   const turnstileSiteKey = document.getElementById("turnstile-widget")?.dataset.sitekey ?? "";
@@ -288,11 +288,6 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
     try {
       const turnstileToken = turnstileSiteKey ? (window as any).turnstile?.getResponse?.() ?? "" : "";
-      if (turnstileSiteKey && !turnstileToken) {
-        loginError.textContent = "Verifikasi keamanan diperlukan. Silakan muat ulang halaman.";
-        loginError.hidden = false;
-        return;
-      }
 
       const res = await fetch(`${apiBase}/v1/public/customer/auth`, {
         method: "POST",
