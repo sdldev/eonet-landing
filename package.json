@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@astrojs/node": "^10.1.3",
-    "astro": "^6.3.7"
+    "astro": "^6.4.8"
   },
   "devDependencies": {
     "wrangler": "^4.94.0"
