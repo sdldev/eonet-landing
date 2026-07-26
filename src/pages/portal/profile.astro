@@ -1,0 +1,207 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Footer from "../../components/Footer.astro";
+import CustomerNav from "../../components/CustomerNav.astro";
+import "../../styles/portal.css";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+const sessionCookie = Astro.cookies.get('eonet_customer_session')?.value;
+
+if (!sessionCookie) {
+  return Astro.redirect('/portal/login');
+}
+
+type ProfileData = {
+  customer: {
+    id: string;
+    customerNo: string;
+    fullName: string;
+    phone: string;
+    email: string | null;
+    address: string | null;
+    status: string;
+    package: { name: string; price: number; speed?: string } | null;
+  };
+};
+
+let data: ProfileData | null = null;
+let errorMessage: string | null = null;
+
+try {
+  const res = await fetch(`${apiBase}/v1/customer/profile`, {
+    headers: { Cookie: `eonet_customer_session=${sessionCookie}` },
+  });
+
+  if (res.ok) {
+    const json = await res.json();
+    data = json.data ?? json;
+  } else if (res.status === 401) {
+    Astro.cookies.delete('eonet_customer_session');
+    return Astro.redirect('/portal/login');
+  } else {
+    const json = await res.json().catch(() => null);
+    errorMessage = json?.error ?? 'Gagal memuat profil.';
+  }
+} catch {
+  errorMessage = 'Tidak dapat terhubung ke server.';
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+}
+---
+
+<Layout title="Profil — Portal EONET">
+  <div class="portal-layout">
+    <CustomerNav active="profile" />
+    <main class="portal-main">
+      <div class="portal-page-header">
+        <h1 class="portal-page-title">Profil</h1>
+        <p class="portal-page-subtitle">Informasi akun dan paket Anda.</p>
+      </div>
+
+      {errorMessage ? (
+        <div class="portal-alert portal-alert-error">{errorMessage}</div>
+      ) : data ? (
+        <>
+          <!-- Customer Info (read-only) -->
+          <div class="portal-card">
+            <h2 class="portal-card-title" style="margin-bottom: var(--space-md);">Informasi Pelanggan</h2>
+            <div class="portal-info-grid">
+              <div class="portal-info-item">
+                <span class="portal-info-label">Nama</span>
+                <span class="portal-info-value">{data.customer.fullName}</span>
+              </div>
+              <div class="portal-info-item">
+                <span class="portal-info-label">HP</span>
+                <span class="portal-info-value">{data.customer.phone}</span>
+              </div>
+              <div class="portal-info-item">
+                <span class="portal-info-label">Kode Pelanggan</span>
+                <span class="portal-info-value">{data.customer.customerNo}</span>
+              </div>
+              <div class="portal-info-item">
+                <span class="portal-info-label">Status</span>
+                <span class="portal-info-value">{data.customer.status === 'active' ? 'Aktif' : data.customer.status}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Package Info -->
+          {data.customer.package && (
+            <div class="portal-card">
+              <h2 class="portal-card-title" style="margin-bottom: var(--space-md);">Paket Internet</h2>
+              <div class="portal-info-grid">
+                <div class="portal-info-item">
+                  <span class="portal-info-label">Paket</span>
+                  <span class="portal-info-value">{data.customer.package.name}</span>
+                </div>
+                <div class="portal-info-item">
+                  <span class="portal-info-label">Harga</span>
+                  <span class="portal-info-value">{formatCurrency(data.customer.package.price)}/bulan</span>
+                </div>
+                {data.customer.package.speed && (
+                  <div class="portal-info-item">
+                    <span class="portal-info-label">Kecepatan</span>
+                    <span class="portal-info-value">{data.customer.package.speed}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <!-- Edit Form -->
+          <div class="portal-card">
+            <h2 class="portal-card-title" style="margin-bottom: var(--space-md);">Ubah Data</h2>
+            <form id="profile-form" class="portal-form" data-api-base={apiBase}>
+              <div class="portal-field-row">
+                <div class="portal-field">
+                  <label class="portal-label" for="email">Email</label>
+                  <input type="email" id="email" name="email" class="portal-input" placeholder="email@example.com" value={data.customer.email ?? ''} />
+                  <span class="portal-field-error" id="err-email"></span>
+                </div>
+                <div class="portal-field">
+                  <!-- spacer for grid alignment -->
+                </div>
+              </div>
+              <div class="portal-field">
+                <label class="portal-label" for="address">Alamat</label>
+                <textarea id="address" name="address" class="portal-input" rows="3" placeholder="Alamat lengkap">{data.customer.address ?? ''}</textarea>
+                <span class="portal-field-error" id="err-address"></span>
+              </div>
+              <div id="profile-alert" class="portal-alert" hidden></div>
+              <div>
+                <button type="submit" class="portal-btn portal-btn-primary" id="profile-submit">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </>
+      ) : null}
+    </main>
+  </div>
+  <Footer />
+</Layout>
+
+<script>
+  const form = document.getElementById('profile-form') as HTMLFormElement;
+  const alert = document.getElementById('profile-alert')!;
+  const submitBtn = document.getElementById('profile-submit') as HTMLButtonElement;
+  const apiBase = form?.dataset.apiBase ?? '';
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alert.hidden = true;
+
+    const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+    const address = (document.getElementById('address') as HTMLTextAreaElement).value.trim();
+
+    // Clear errors
+    document.querySelectorAll('.portal-field-error').forEach(el => el.textContent = '');
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      document.getElementById('err-email')!.textContent = 'Format email tidak valid';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="portal-spinner"></span> Menyimpan...';
+
+    try {
+      const csrf = document.cookie.match(/eonet_customer_csrf=([^;]+)/)?.[1] ?? '';
+      const body: Record<string, string> = {};
+      if (email) body.email = email;
+      if (address) body.address = address;
+
+      const res = await fetch(`${apiBase}/v1/customer/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf,
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      const result = await res.json().catch(() => null);
+
+      if (res.ok) {
+        alert.className = 'portal-alert portal-alert-success';
+        alert.textContent = 'Profil berhasil diperbarui.';
+        alert.hidden = false;
+      } else {
+        alert.className = 'portal-alert portal-alert-error';
+        alert.textContent = result?.error ?? 'Gagal menyimpan perubahan.';
+        alert.hidden = false;
+      }
+    } catch {
+      alert.className = 'portal-alert portal-alert-error';
+      alert.textContent = 'Gagal terhubung ke server.';
+      alert.hidden = false;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Simpan Perubahan';
+    }
+  });
+</script>

@@ -1,0 +1,392 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
+
+// If already logged in, redirect to dashboard
+const sessionCookie = Astro.cookies.get('eonet_customer_session')?.value;
+if (sessionCookie) {
+  return Astro.redirect('/portal/dashboard');
+}
+---
+
+<Layout title="Masuk — Portal EONET">
+  <Header />
+  <main>
+    <section class="login-section">
+      <div class="container">
+        <div class="login-card surface-panel" id="login-card" data-api-base={apiBase} data-turnstile-key={turnstileSiteKey}>
+          <div class="section-header">
+            <div class="eyebrow">Portal Pelanggan</div>
+            <h1 class="section-title">Masuk ke akun Anda</h1>
+            <p class="section-subtitle">
+              Gunakan nomor HP dan kode pelanggan untuk masuk. Kami akan mengirim kode OTP via WhatsApp.
+            </p>
+          </div>
+
+          <!-- Step 1: Phone + Customer No -->
+          <div id="step-1">
+            <form id="request-otp-form" class="login-form" novalidate>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label class="field-label" for="phone">Nomor HP <span class="required">*</span></label>
+                  <input type="tel" id="phone" name="phone" class="field-input" placeholder="08xxxxxxxxxx" autocomplete="tel" required />
+                  <span class="field-error" id="err-phone"></span>
+                </div>
+                <div class="form-field">
+                  <label class="field-label" for="customer_no">Kode Pelanggan <span class="required">*</span></label>
+                  <input type="text" id="customer_no" name="customer_no" class="field-input" placeholder="EON-XXXX" autocomplete="off" required />
+                  <span class="field-error" id="err-customer_no"></span>
+                </div>
+              </div>
+              {turnstileSiteKey && (
+                <div class="turnstile-wrap">
+                  <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-callback="onTurnstileSuccess"></div>
+                </div>
+              )}
+              <div id="step1-error" class="alert alert-error" hidden></div>
+              <button type="submit" class="btn btn-primary login-submit" id="step1-submit">
+                Kirim Kode OTP
+              </button>
+            </form>
+          </div>
+
+          <!-- Step 2: OTP Input (hidden initially) -->
+          <div id="step-2" hidden>
+            <div class="otp-info">
+              <p class="otp-info-text">
+                Kode OTP telah dikirim ke WhatsApp <strong id="otp-phone-display"></strong>
+              </p>
+              <p class="otp-info-sub">Masukkan 6 digit kode yang Anda terima.</p>
+            </div>
+            <form id="verify-otp-form" class="login-form" novalidate>
+              <div class="form-field">
+                <label class="field-label" for="otp-code">Kode OTP <span class="required">*</span></label>
+                <input type="text" id="otp-code" name="code" class="field-input otp-input" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required />
+                <span class="field-error" id="err-code"></span>
+              </div>
+              <div id="step2-error" class="alert alert-error" hidden></div>
+              <button type="submit" class="btn btn-primary login-submit" id="step2-submit">
+                Verifikasi & Masuk
+              </button>
+              <button type="button" class="btn btn-secondary login-back" id="back-btn">
+                Kembali
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+
+  {turnstileSiteKey && (
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer slot="head"></script>
+  )}
+</Layout>
+
+<script>
+  const apiBase = (document.getElementById('login-card') as HTMLElement)?.dataset.apiBase ?? '';
+  const turnstileKey = (document.getElementById('login-card') as HTMLElement)?.dataset.turnstileKey ?? '';
+
+  let turnstileToken = '';
+
+  // @ts-ignore
+  window.onTurnstileSuccess = function(token: string) {
+    turnstileToken = token;
+  };
+
+  const step1 = document.getElementById('step-1')!;
+  const step2 = document.getElementById('step-2')!;
+  const phoneInput = document.getElementById('phone') as HTMLInputElement;
+  const customerNoInput = document.getElementById('customer_no') as HTMLInputElement;
+  const otpInput = document.getElementById('otp-code') as HTMLInputElement;
+  const otpPhoneDisplay = document.getElementById('otp-phone-display')!;
+  const step1Form = document.getElementById('request-otp-form')!;
+  const step2Form = document.getElementById('verify-otp-form')!;
+  const step1Error = document.getElementById('step1-error')!;
+  const step2Error = document.getElementById('step2-error')!;
+  const step1Submit = document.getElementById('step1-submit') as HTMLButtonElement;
+  const step2Submit = document.getElementById('step2-submit') as HTMLButtonElement;
+  const backBtn = document.getElementById('back-btn')!;
+
+  let currentPhone = '';
+
+  function clearErrors() {
+    document.querySelectorAll('.field-error').forEach((el) => (el.textContent = ''));
+    document.querySelectorAll('.field-input').forEach((el) => el.classList.remove('field-input-error'));
+    step1Error.hidden = true;
+    step2Error.hidden = true;
+  }
+
+  function showFieldError(field: string, message: string) {
+    const errEl = document.getElementById(`err-${field}`);
+    if (errEl) errEl.textContent = message;
+    const inputEl = document.getElementById(field);
+    if (inputEl) inputEl.classList.add('field-input-error');
+  }
+
+  function setLoading(btn: HTMLButtonElement, loading: boolean) {
+    if (loading) {
+      btn.disabled = true;
+      btn.dataset.origText = btn.textContent ?? '';
+      btn.innerHTML = '<span class="spinner"></span> Memproses...';
+    } else {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.origText ?? '';
+    }
+  }
+
+  // Step 1: Request OTP
+  step1Form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    const phone = phoneInput.value.trim();
+    const customerNo = customerNoInput.value.trim();
+
+    if (!phone) { showFieldError('phone', 'Nomor HP wajib diisi'); return; }
+    if (!customerNo) { showFieldError('customer_no', 'Kode pelanggan wajib diisi'); return; }
+
+    setLoading(step1Submit, true);
+
+    try {
+      const body: Record<string, string> = { phone, customer_no: customerNo };
+      if (turnstileKey && turnstileToken) body.turnstile_token = turnstileToken;
+
+      const res = await fetch(`${apiBase}/v1/customer/auth/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const result = await res.json().catch(() => null);
+
+      if (res.ok && result?.success) {
+        currentPhone = phone;
+        otpPhoneDisplay.textContent = phone;
+        step1.hidden = true;
+        step2.hidden = false;
+        otpInput.focus();
+      } else {
+        step1Error.textContent = result?.error ?? 'Gagal mengirim OTP. Silakan coba lagi.';
+        step1Error.hidden = false;
+      }
+    } catch {
+      step1Error.textContent = 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+      step1Error.hidden = false;
+    } finally {
+      setLoading(step1Submit, false);
+    }
+  });
+
+  // Step 2: Verify OTP
+  step2Form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+
+    const code = otpInput.value.trim();
+
+    if (!code || code.length !== 6) { showFieldError('code', 'Masukkan 6 digit kode OTP'); return; }
+
+    setLoading(step2Submit, true);
+
+    try {
+      const res = await fetch(`${apiBase}/v1/customer/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: currentPhone, code }),
+        credentials: 'include',
+      });
+
+      const result = await res.json().catch(() => null);
+
+      if (res.ok && result?.success) {
+        window.location.href = '/portal/dashboard';
+      } else {
+        step2Error.textContent = result?.error ?? 'Kode OTP salah atau kedaluwarsa.';
+        step2Error.hidden = false;
+      }
+    } catch {
+      step2Error.textContent = 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+      step2Error.hidden = false;
+    } finally {
+      setLoading(step2Submit, false);
+    }
+  });
+
+  // Back button
+  backBtn.addEventListener('click', () => {
+    step2.hidden = true;
+    step1.hidden = false;
+    otpInput.value = '';
+    clearErrors();
+  });
+</script>
+
+<style>
+  .login-section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(var(--header-height, 80px) + var(--space-xl)) var(--space-md) var(--space-xl);
+  }
+
+  .login-card {
+    max-width: 520px;
+    width: 100%;
+    padding: var(--space-2xl);
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent-400);
+    margin-bottom: var(--space-xs);
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-50);
+    margin: 0 0 var(--space-xs);
+  }
+
+  .section-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-300);
+    margin: 0;
+  }
+
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+  }
+
+  .field-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-200);
+  }
+
+  .required { color: #f87171; }
+
+  .field-input {
+    background: var(--bg-950);
+    border: 1px solid var(--border-soft);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.85rem;
+    color: var(--text-50);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field-input:focus { border-color: var(--accent-400); }
+  .field-input-error { border-color: #f87171; }
+
+  .field-error {
+    font-size: 0.72rem;
+    color: #f87171;
+    min-height: 1.1em;
+  }
+
+  .turnstile-wrap {
+    display: flex;
+    justify-content: center;
+    margin: var(--space-sm) 0;
+  }
+
+  .alert-error {
+    background: rgba(248, 113, 113, 0.12);
+    color: #fca5a5;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .login-submit {
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 0.88rem;
+  }
+
+  .login-back {
+    width: 100%;
+    padding: 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .otp-info {
+    text-align: center;
+    margin-bottom: var(--space-lg);
+    padding: var(--space-md);
+    background: rgba(94, 234, 212, 0.06);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(94, 234, 212, 0.15);
+  }
+
+  .otp-info-text {
+    font-size: 0.88rem;
+    color: var(--text-200);
+    margin: 0 0 var(--space-2xs);
+  }
+
+  .otp-info-sub {
+    font-size: 0.78rem;
+    color: var(--text-300);
+    margin: 0;
+  }
+
+  .otp-input {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 640px) {
+    .login-card { padding: var(--space-lg); }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>

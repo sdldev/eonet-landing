@@ -1,0 +1,162 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Footer from "../../components/Footer.astro";
+import CustomerNav from "../../components/CustomerNav.astro";
+import "../../styles/portal.css";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+const sessionCookie = Astro.cookies.get('eonet_customer_session')?.value;
+
+if (!sessionCookie) {
+  return Astro.redirect('/portal/login');
+}
+
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get('page') ?? '1', 10);
+const limit = 20;
+
+type Invoice = {
+  id: string;
+  invoiceNumber: string;
+  period: string;
+  amount: number;
+  remainingAmount: number;
+  status: string;
+  dueDate: string;
+  paymentToken: string | null;
+};
+
+type InvoicesResponse = {
+  invoices: Invoice[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+let invoices: Invoice[] = [];
+let total = 0;
+let errorMessage: string | null = null;
+
+try {
+  const res = await fetch(`${apiBase}/v1/customer/invoices?page=${page}&limit=${limit}`, {
+    headers: { Cookie: `eonet_customer_session=${sessionCookie}` },
+  });
+
+  if (res.ok) {
+    const json = await res.json();
+    const d = json.data ?? json;
+    invoices = d.invoices ?? [];
+    total = d.total ?? 0;
+  } else if (res.status === 401) {
+    Astro.cookies.delete('eonet_customer_session');
+    return Astro.redirect('/portal/login');
+  } else {
+    const json = await res.json().catch(() => null);
+    errorMessage = json?.error ?? 'Gagal memuat data tagihan.';
+  }
+} catch {
+  errorMessage = 'Tidak dapat terhubung ke server.';
+}
+
+const totalPages = Math.ceil(total / limit);
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+}
+
+function statusBadge(status: string): { label: string; cls: string } {
+  const map: Record<string, { label: string; cls: string }> = {
+    paid: { label: 'Lunas', cls: 'portal-badge-paid' },
+    issued: { label: 'Belum Bayar', cls: 'portal-badge-unpaid' },
+    unpaid: { label: 'Belum Bayar', cls: 'portal-badge-unpaid' },
+    overdue: { label: 'Jatuh Tempo', cls: 'portal-badge-overdue' },
+    partially_paid: { label: 'Sebagian', cls: 'portal-badge-unpaid' },
+    cancelled: { label: 'Batal', cls: 'portal-badge-cancelled' },
+  };
+  return map[status] ?? { label: status, cls: 'portal-badge-cancelled' };
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+---
+
+<Layout title="Tagihan — Portal EONET">
+  <div class="portal-layout">
+    <CustomerNav active="invoices" />
+    <main class="portal-main">
+      <div class="portal-page-header">
+        <h1 class="portal-page-title">Tagihan</h1>
+        <p class="portal-page-subtitle">Daftar semua tagihan Anda.</p>
+      </div>
+
+      {errorMessage ? (
+        <div class="portal-alert portal-alert-error">{errorMessage}</div>
+      ) : invoices.length > 0 ? (
+        <>
+          <div class="portal-card">
+            <div class="portal-table-wrap">
+              <table class="portal-table">
+                <thead>
+                  <tr>
+                    <th>No. Invoice</th>
+                    <th>Periode</th>
+                    <th>Jatuh Tempo</th>
+                    <th>Jumlah</th>
+                    <th>Sisa</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => {
+                    const badge = statusBadge(inv.status);
+                    return (
+                      <tr>
+                        <td style="font-weight: 600;">{inv.invoiceNumber}</td>
+                        <td>{inv.period}</td>
+                        <td>{formatDate(inv.dueDate)}</td>
+                        <td>{formatCurrency(inv.amount)}</td>
+                        <td style={inv.remainingAmount > 0 ? 'color: #fca5a5;' : 'color: #6ee7b7;'}>
+                          {formatCurrency(inv.remainingAmount)}
+                        </td>
+                        <td><span class={`portal-badge ${badge.cls}`}>{badge.label}</span></td>
+                        <td>
+                          {inv.paymentToken && inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                            <a href={`/portal/pay/${inv.paymentToken}`} class="portal-btn portal-btn-primary portal-btn-sm">
+                              Bayar
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div class="portal-pagination">
+              {page > 1 && <a href={`/portal/invoices?page=${page - 1}`}>&laquo; Prev</a>}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                p === page ? <span class="active">{p}</span> : <a href={`/portal/invoices?page=${p}`}>{p}</a>
+              ))}
+              {page < totalPages && <a href={`/portal/invoices?page=${page + 1}`}>Next &raquo;</a>}
+            </div>
+          )}
+        </>
+      ) : (
+        <div class="portal-card">
+          <div class="portal-empty">
+            <div class="portal-empty-icon">&#128196;</div>
+            <p class="portal-empty-text">Belum ada tagihan.</p>
+          </div>
+        </div>
+      )}
+    </main>
+  </div>
+  <Footer />
+</Layout>

@@ -32,3 +32,4 @@ pnpm-debug.log*
 
 # test artifacts
 test-results/
+.omc/

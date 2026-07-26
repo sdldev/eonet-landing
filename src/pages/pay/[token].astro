@@ -257,6 +257,15 @@ const pageTitle = invoice
                                         <p class="payment-method-hint">
                                             Anda akan diarahkan ke pembayaran aman via Midtrans (kartu kredit, e-wallet, virtual account, dll).
                                         </p>
+                                        <div class="payment-separator">
+                                            <span>atau</span>
+                                        </div>
+                                        <button id="pay-duitku-button" class="btn btn-duitku btn-large full-width" type="button">
+                                            <span class="btn-text">Bayar via Duitku</span>
+                                        </button>
+                                        <p class="payment-method-hint">
+                                            Bayar melalui Duitku (transfer bank, e-wallet, retail, dll).
+                                        </p>
                                     </div>
                                 </div>
 
@@ -467,6 +476,70 @@ const pageTitle = invoice
         }
 
         payButton?.addEventListener("click", startPayment);
+
+        // --- Duitku payment ---
+        const duitkuButton = document.getElementById("pay-duitku-button");
+
+        function setDuitkuLoading(loading) {
+            if (!duitkuButton) return;
+            duitkuButton.disabled = loading;
+            const text = duitkuButton.querySelector(".btn-text");
+            if (text) text.textContent = loading ? "Memproses..." : "Bayar via Duitku";
+        }
+
+        async function startDuitkuPayment() {
+            if (!canPay) return;
+            setDuitkuLoading(true);
+
+            try {
+                const res = await fetch(`${apiBase}/v1/public/pay/${encodeURIComponent(token)}/duitku`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: "{}",
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    showOverlay(`
+                        <div class="state-icon error">×</div>
+                        <h2 class="state-title">Gagal Memulai Pembayaran</h2>
+                        <p class="state-message">${escapeHtml(err.error?.message) ?? "Duitku tidak tersedia saat ini. Silakan coba metode lain."}</p>
+                        <button class="btn btn-secondary" id="retry-close-duitku">Tutup</button>
+                    `);
+                    document.getElementById("retry-close-duitku")?.addEventListener("click", hideOverlay);
+                    setDuitkuLoading(false);
+                    return;
+                }
+
+                const json = await res.json();
+                const paymentUrl = json.data?.payment_url;
+
+                if (!paymentUrl) {
+                    showOverlay(`
+                        <div class="state-icon error">×</div>
+                        <h2 class="state-title">Gagal Memulai Pembayaran</h2>
+                        <p class="state-message">URL pembayaran tidak ditemukan. Silakan coba metode lain.</p>
+                        <button class="btn btn-secondary" id="retry-close-duitku-url">Tutup</button>
+                    `);
+                    document.getElementById("retry-close-duitku-url")?.addEventListener("click", hideOverlay);
+                    setDuitkuLoading(false);
+                    return;
+                }
+
+                // Redirect to Duitku payment page
+                window.location.href = paymentUrl;
+            } catch {
+                showOverlay(`
+                    <h2 class="state-title">Terjadi Kesalahan</h2>
+                    <p class="state-message">Tidak dapat terhubung ke server. Silakan periksa koneksi Anda.</p>
+                    <button class="btn btn-secondary" id="retry-close-duitku-net">Tutup</button>
+                `);
+                document.getElementById("retry-close-duitku-net")?.addEventListener("click", hideOverlay);
+                setDuitkuLoading(false);
+            }
+        }
+
+        duitkuButton?.addEventListener("click", startDuitkuPayment);
     }
 </script>
 
@@ -803,6 +876,34 @@ const pageTitle = invoice
         margin: 0;
         text-align: center;
         line-height: 1.5;
+    }
+
+    .payment-separator {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        color: var(--text-400);
+        font-size: 0.82rem;
+        margin: var(--space-xs) 0;
+    }
+
+    .payment-separator::before,
+    .payment-separator::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border-soft);
+    }
+
+    .btn-duitku {
+        background: #1a73e8;
+        color: #fff;
+        border-color: #1a73e8;
+    }
+
+    .btn-duitku:hover:not(:disabled) {
+        background: #1557b0;
+        border-color: #1557b0;
     }
 
     /* Status overlay */

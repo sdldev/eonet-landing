@@ -1,0 +1,13 @@
+---
+export const prerender = false;
+
+// Portal payment redirect — send authenticated customers to the public payment page
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect('/portal/invoices');
+}
+
+// Redirect to the main public payment page (same flow as WA link)
+return Astro.redirect(`/pay/${encodeURIComponent(token)}`);
+---

@@ -1,0 +1,166 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Footer from "../../components/Footer.astro";
+import CustomerNav from "../../components/CustomerNav.astro";
+import "../../styles/portal.css";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+const sessionCookie = Astro.cookies.get('eonet_customer_session')?.value;
+
+if (!sessionCookie) {
+  return Astro.redirect('/portal/login');
+}
+
+// Verify session is valid
+let customerName = '';
+try {
+  const res = await fetch(`${apiBase}/v1/customer/auth/me`, {
+    headers: { Cookie: `eonet_customer_session=${sessionCookie}` },
+  });
+  if (res.ok) {
+    const json = await res.json();
+    customerName = json.data?.customer?.fullName ?? json.customer?.fullName ?? '';
+  } else {
+    Astro.cookies.delete('eonet_customer_session');
+    return Astro.redirect('/portal/login');
+  }
+} catch {
+  Astro.cookies.delete('eonet_customer_session');
+  return Astro.redirect('/portal/login');
+}
+---
+
+<Layout title="WiFi — Portal EONET">
+  <div class="portal-layout">
+    <CustomerNav active="wifi" />
+    <main class="portal-main">
+      <div class="portal-page-header">
+        <h1 class="portal-page-title">WiFi</h1>
+        <p class="portal-page-subtitle">Ubah nama dan password WiFi Anda.</p>
+      </div>
+
+      <div class="portal-card">
+        <div class="portal-alert portal-alert-info" style="margin-bottom: var(--space-lg);">
+          <strong>Perhatian:</strong> Perangkat router harus dalam keadaan online untuk mengubah pengaturan WiFi. Perubahan akan diterapkan dalam beberapa detik.
+        </div>
+
+        <form id="wifi-form" class="portal-form" data-api-base={apiBase}>
+          <div class="portal-field">
+            <label class="portal-label" for="ssid">Nama WiFi (SSID) Baru</label>
+            <input type="text" id="ssid" name="ssid" class="portal-input" placeholder="Nama WiFi baru" minlength="1" maxlength="32" />
+            <span class="portal-field-error" id="err-ssid"></span>
+            <span class="portal-field-help">Maksimal 32 karakter.</span>
+          </div>
+
+          <div class="portal-field">
+            <label class="portal-label" for="password">Password WiFi Baru</label>
+            <input type="password" id="password" name="password" class="portal-input" placeholder="Minimal 8 karakter" minlength="8" maxlength="63" />
+            <span class="portal-field-error" id="err-password"></span>
+            <span class="portal-field-help">Minimal 8 karakter, maksimal 63 karakter.</span>
+          </div>
+
+          <div class="portal-field">
+            <label class="portal-label" for="password_confirm">Konfirmasi Password</label>
+            <input type="password" id="password_confirm" name="password_confirm" class="portal-input" placeholder="Ulangi password" />
+            <span class="portal-field-error" id="err-password_confirm"></span>
+          </div>
+
+          <div id="wifi-alert" class="portal-alert" hidden></div>
+
+          <div>
+            <button type="submit" class="portal-btn portal-btn-primary" id="wifi-submit">Ubah WiFi</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+  <Footer />
+</Layout>
+
+<script>
+  const form = document.getElementById('wifi-form') as HTMLFormElement;
+  const alert = document.getElementById('wifi-alert')!;
+  const submitBtn = document.getElementById('wifi-submit') as HTMLButtonElement;
+  const apiBase = form?.dataset.apiBase ?? '';
+
+  function clearErrors() {
+    document.querySelectorAll('.portal-field-error').forEach(el => el.textContent = '');
+  }
+
+  function showFieldError(field: string, message: string) {
+    const el = document.getElementById(`err-${field}`);
+    if (el) el.textContent = message;
+    const input = document.getElementById(field);
+    if (input) input.classList.add('portal-input-error');
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+    alert.hidden = true;
+
+    const ssid = (document.getElementById('ssid') as HTMLInputElement).value.trim();
+    const password = (document.getElementById('password') as HTMLInputElement).value;
+    const passwordConfirm = (document.getElementById('password_confirm') as HTMLInputElement).value;
+
+    let valid = true;
+
+    if (!ssid) {
+      showFieldError('ssid', 'Nama WiFi wajib diisi');
+      valid = false;
+    }
+
+    if (!password) {
+      showFieldError('password', 'Password wajib diisi');
+      valid = false;
+    } else if (password.length < 8) {
+      showFieldError('password', 'Password minimal 8 karakter');
+      valid = false;
+    }
+
+    if (password !== passwordConfirm) {
+      showFieldError('password_confirm', 'Password tidak cocok');
+      valid = false;
+    }
+
+    if (!valid) return;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="portal-spinner"></span> Mengubah...';
+
+    try {
+      const csrf = document.cookie.match(/eonet_customer_csrf=([^;]+)/)?.[1] ?? '';
+      const res = await fetch(`${apiBase}/v1/customer/wifi/change`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ ssid, password }),
+      });
+
+      const result = await res.json().catch(() => null);
+
+      if (res.ok) {
+        alert.className = 'portal-alert portal-alert-success';
+        alert.textContent = 'Pengaturan WiFi berhasil diubah. Perangkat akan terputus sesaat.';
+        alert.hidden = false;
+        form.reset();
+      } else {
+        alert.className = 'portal-alert portal-alert-error';
+        alert.textContent = result?.error ?? 'Gagal mengubah pengaturan WiFi.';
+        alert.hidden = false;
+      }
+    } catch {
+      alert.className = 'portal-alert portal-alert-error';
+      alert.textContent = 'Gagal terhubung ke server.';
+      alert.hidden = false;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Ubah WiFi';
+    }
+  });
+</script>
