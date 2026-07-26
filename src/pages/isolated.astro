@@ -1,0 +1,183 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+
+const token = Astro.url.searchParams.get("token");
+
+type IsolationStatus = {
+    is_isolated: boolean;
+    isolation_status: string;
+    customer_name_masked: string;
+    customer_phone_masked: string;
+    pay_token: string;
+    message: string;
+    payment_url: string;
+    company_name: string;
+    support_phone: string;
+};
+
+let isolation: IsolationStatus | null = null;
+let errorMessage: string | null = null;
+
+if (token) {
+    try {
+        const res = await fetch(`${apiBase}/v1/public/isolation-status/${encodeURIComponent(token)}`);
+        if (res.ok) {
+            const json = (await res.json()) as { data: IsolationStatus };
+            isolation = json.data;
+        } else if (res.status === 404) {
+            errorMessage = "Token tidak ditemukan. Pastikan link yang Anda buka benar.";
+        } else {
+            errorMessage = "Gagal memuat data isolasi.";
+        }
+    } catch {
+        errorMessage = "Tidak dapat terhubung ke server.";
+    }
+} else {
+    errorMessage = "Token tidak valid.";
+}
+---
+
+<Layout title="Akses Dinonaktifkan — EONET">
+    <Header />
+    <main class="isolated-page">
+        <div class="isolated-card">
+            {!token || errorMessage ? (
+                <div class="error-state">
+                    <div class="icon-error">⚠️</div>
+                    <h2>Link Tidak Valid</h2>
+                    <p>{errorMessage}</p>
+                    <a href="/" class="btn btn-primary">Kembali ke Beranda</a>
+                </div>
+            ) : !isolation?.is_isolated ? (
+                <div class="active-state">
+                    <div class="icon-active">✅</div>
+                    <h2>Akses Aktif</h2>
+                    <p>Akses internet Anda sudah aktif. Tidak ada tindakan yang diperlukan.</p>
+                    <a href={`/pay/${token}`} class="btn btn-primary">Lihat Tagihan</a>
+                </div>
+            ) : (
+                <div class="isolated-state">
+                    <div class="icon-isolated">🔒</div>
+                    <h2>Akses Internet Dinonaktifkan</h2>
+                    <p class="customer-info">
+                        Pelanggan: <strong>{isolation.customer_name_masked}</strong>
+                    </p>
+                    <p class="message">{isolation.message}</p>
+                    <div class="actions">
+                        <a href={`/pay/${token}`} class="btn btn-primary">Bayar Sekarang</a>
+                        {isolation.support_phone && (
+                            <a
+                                href={`https://wa.me/${isolation.support_phone}`}
+                                class="btn btn-secondary"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                Hubungi CS
+                            </a>
+                        )}
+                    </div>
+                    <p class="hint">Setelah pembayaran berhasil, akses internet akan dipulihkan otomatis.</p>
+                </div>
+            )}
+        </div>
+    </main>
+    <Footer />
+</Layout>
+
+<style>
+    .isolated-page {
+        min-height: 70vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .isolated-card {
+        background: var(--surface, #1a1a2e);
+        border-radius: 16px;
+        padding: 3rem;
+        max-width: 520px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.06));
+    }
+
+    .icon-isolated,
+    .icon-active,
+    .icon-error {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 1rem;
+        color: var(--text, #f0f0f0);
+    }
+
+    .customer-info {
+        font-size: 0.9rem;
+        color: var(--text-secondary, #a0a0b0);
+        margin-bottom: 1rem;
+    }
+
+    .message {
+        font-size: 0.95rem;
+        color: var(--text-secondary, #a0a0b0);
+        line-height: 1.6;
+        margin-bottom: 2rem;
+    }
+
+    .actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .hint {
+        font-size: 0.8rem;
+        color: var(--text-muted, #666);
+        margin: 0;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition: opacity 0.15s;
+    }
+
+    .btn:hover {
+        opacity: 0.85;
+    }
+
+    .btn-primary {
+        background: var(--accent, #35d399);
+        color: #fff;
+    }
+
+    .btn-secondary {
+        background: transparent;
+        border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+        color: var(--text, #f0f0f0);
+    }
+
+    .error-state p,
+    .active-state p {
+        color: var(--text-secondary, #a0a0b0);
+        margin-bottom: 1.5rem;
+    }
+</style>

@@ -46,6 +46,19 @@ if (token) {
         if (res.ok) {
             const json = (await res.json()) as { data: Invoice };
             invoice = json.data;
+
+            // Auto-redirect to isolation page if customer is isolated
+            if (invoice?.status !== 'paid' && invoice?.status !== 'cancelled') {
+                try {
+                    const isoRes = await fetch(`${apiBase}/v1/public/isolation-status/${encodeURIComponent(token)}`);
+                    if (isoRes.ok) {
+                        const isoJson = (await isoRes.json()) as { data: { is_isolated: boolean } };
+                        if (isoJson.data?.is_isolated) {
+                            return Astro.redirect(`/isolated?token=${encodeURIComponent(token)}`);
+                        }
+                    }
+                } catch { /* ignore — proceed to normal pay page */ }
+            }
         } else if (res.status === 404) {
             errorMessage = "Invoice tidak ditemukan. Pastikan link yang Anda buka benar.";
         } else if (res.status === 429) {
