@@ -34,7 +34,11 @@ type Invoice = {
     paid_amount: string;
     status: string;
     can_pay: boolean;
-    company: { name?: string; support_phone?: string } | null;
+    company: {
+        name?: string;
+        support_phone?: string;
+        bank_accounts?: Array<{ bank_name: string; account_number: string; account_name: string }>;
+    } | null;
 };
 
 let invoice: Invoice | null = null;
@@ -227,6 +231,24 @@ const pageTitle = invoice
                                             <dd class={invoice.status === "overdue" ? "text-danger" : ""}>{formatDate(invoice.due_date)}</dd>
                                         </div>
                                     </dl>
+
+                                    {invoice.company?.bank_accounts && invoice.company.bank_accounts.length > 0 && (
+                                        <>
+                                            <hr class="divider" />
+                                            <div class="eyebrow">Rekening Tujuan Transfer</div>
+                                            <dl class="info-list">
+                                                {invoice.company.bank_accounts.map((acc) => (
+                                                    <div class="info-row bank-account-row">
+                                                        <dt>{acc.bank_name}</dt>
+                                                        <dd>
+                                                            <span class="account-number">{acc.account_number}</span>
+                                                            <span class="account-name">a/n {acc.account_name}</span>
+                                                        </dd>
+                                                    </div>
+                                                ))}
+                                            </dl>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Confirmation card */}
@@ -823,6 +845,15 @@ const pageTitle = invoice
         text-align: right;
         word-break: break-word;
     }
+
+    .bank-account-row dd {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.15rem;
+    }
+    .account-number { font-weight: 700; font-size: 0.95rem; letter-spacing: 0.03em; }
+    .account-name { font-size: 0.8rem; color: var(--text-300); font-weight: 500; }
 
     .text-danger { color: #fca5a5; }
 

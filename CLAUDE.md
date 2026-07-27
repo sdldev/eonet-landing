@@ -71,5 +71,5 @@ docker run -p 4321:4321 eonet-landing
 ## Documentation
 
 - `README.md` — quick start (boilerplate, may need updating).
-- Workspace contracts: `../docs/CROSS_REPO_CONTRACTS.md`.
+- Workspace contracts: `../eonet-docs/docs/CROSS_REPO_CONTRACTS.md`.
 - Billing API public endpoints: `../eonet-billing-api/docs/API_MVP.md`.
