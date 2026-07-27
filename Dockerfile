@@ -1,7 +1,18 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
+
+FROM deps AS dev
+
+ENV HOST=0.0.0.0
+ENV PORT=4321
+
+EXPOSE 4321
+
+CMD ["npm", "run", "dev"]
+
+FROM deps AS build
 COPY . .
 ARG PUBLIC_API_BASE=http://localhost:3000
 ARG PUBLIC_MIDTRANS_CLIENT_KEY=
