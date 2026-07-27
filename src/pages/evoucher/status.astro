@@ -1,0 +1,242 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:5000";
+---
+
+<Layout title="Status Pesanan Voucher — EONET">
+    <Header />
+    <main>
+        <section class="status-section">
+            <div class="container">
+                <div id="status-card" class="status-card">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                        <p>Memeriksa status pesanan...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <Footer />
+
+    <script is:inline define:vars={{ apiBase }}>
+        const orderNumber = new URLSearchParams(window.location.search).get('order');
+        const statusCard = document.getElementById('status-card');
+        let pollCount = 0;
+        const MAX_POLLS = 15;
+
+        async function checkStatus() {
+            if (!orderNumber) {
+                statusCard.innerHTML = `
+                    <div class="status-icon error">✕</div>
+                    <h2>Pesanan Tidak Ditemukan</h2>
+                    <p>Nomor pesanan tidak valid atau tidak tersedia.</p>
+                    <a href="/evoucher" class="btn btn-primary">Kembali</a>
+                `;
+                return;
+            }
+
+            try {
+                const res = await fetch(`${apiBase}/v1/public/evoucher/order/${encodeURIComponent(orderNumber)}`);
+                if (!res.ok) throw new Error('Pesanan tidak ditemukan');
+                const json = await res.json();
+                const order = json.data;
+
+                if (order.status === 'PENDING') {
+                    if (pollCount >= MAX_POLLS) {
+                        statusCard.innerHTML = `
+                            <div class="status-icon pending">⏳</div>
+                            <h2>Menunggu Pembayaran</h2>
+                            <p>Pesanan <strong>${order.order_number}</strong> belum dibayar.</p>
+                            <p>Silakan selesaikan pembayaran atau buat pesanan baru.</p>
+                            <a href="/evoucher" class="btn btn-primary">Buat Pesanan Baru</a>
+                        `;
+                        return;
+                    }
+                    pollCount++;
+                    setTimeout(checkStatus, 3000);
+                    return;
+                }
+
+                if (order.status === 'DELIVERED' || order.status === 'PAID') {
+                    statusCard.innerHTML = `
+                        <div class="status-icon success">✓</div>
+                        <h2>Voucher Berhasil Dibeli!</h2>
+                        <div class="voucher-details">
+                            <div class="detail-row">
+                                <span class="label">No. Pesanan</span>
+                                <span class="value">${order.order_number}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Paket</span>
+                                <span class="value">${order.template.name} (${order.template.duration_hours} jam)</span>
+                            </div>
+                            ${order.voucher ? `
+                            <div class="detail-row highlight">
+                                <span class="label">Kode Voucher</span>
+                                <span class="value code">${order.voucher.code}</span>
+                            </div>
+                            <div class="detail-row highlight">
+                                <span class="label">Username</span>
+                                <span class="value code">${order.voucher.username}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <p class="info-text">Gunakan kode voucher di atas untuk login ke hotspot EONET.</p>
+                        <a href="/evoucher" class="btn btn-secondary">Beli Lagi</a>
+                    `;
+                    return;
+                }
+
+                if (order.status === 'EXPIRED' || order.status === 'CANCELLED') {
+                    statusCard.innerHTML = `
+                        <div class="status-icon error">✕</div>
+                        <h2>Pesanan ${order.status === 'EXPIRED' ? 'Kedaluwarsa' : 'Dibatalkan'}</h2>
+                        <p>Pesanan <strong>${order.order_number}</strong> tidak dapat diproses.</p>
+                        <a href="/evoucher" class="btn btn-primary">Buat Pesanan Baru</a>
+                    `;
+                    return;
+                }
+
+                // Unknown status — keep polling
+                if (pollCount < MAX_POLLS) {
+                    pollCount++;
+                    setTimeout(checkStatus, 3000);
+                }
+            } catch (err) {
+                statusCard.innerHTML = `
+                    <div class="status-icon error">✕</div>
+                    <h2>Terjadi Kesalahan</h2>
+                    <p>${err.message || 'Gagal memeriksa status pesanan.'}</p>
+                    <a href="/evoucher" class="btn btn-primary">Kembali</a>
+                `;
+            }
+        }
+
+        checkStatus();
+    </script>
+</Layout>
+
+<style>
+    .status-section {
+        min-height: 70vh;
+        padding: 3rem 1rem;
+        max-width: 560px;
+        margin: 0 auto;
+    }
+    .status-card {
+        background: var(--color-surface, #1e293b);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 2.5rem 2rem;
+        text-align: center;
+    }
+    .spinner-container {
+        padding: 2rem;
+        color: var(--color-text-secondary, #94a3b8);
+    }
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: var(--color-primary, #3b82f6);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        margin: 0 auto 1.5rem;
+    }
+    .status-icon.success {
+        background: rgba(34,197,94,0.2);
+        color: #22c55e;
+    }
+    .status-icon.error {
+        background: rgba(239,68,68,0.2);
+        color: #ef4444;
+    }
+    .status-icon.pending {
+        background: rgba(234,179,8,0.2);
+        color: #eab308;
+    }
+    h2 {
+        margin: 0 0 1rem;
+        color: var(--color-text-primary, #e2e8f0);
+        font-size: 1.5rem;
+    }
+    p {
+        color: var(--color-text-secondary, #94a3b8);
+        margin: 0.5rem 0;
+    }
+    .voucher-details {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        text-align: left;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .label {
+        color: var(--color-text-secondary, #94a3b8);
+        font-size: 0.9rem;
+    }
+    .detail-row .value {
+        color: var(--color-text-primary, #e2e8f0);
+        font-weight: 600;
+    }
+    .detail-row.highlight {
+        background: rgba(59,130,246,0.1);
+        border-radius: 6px;
+        padding: 0.7rem;
+        margin: 0.3rem 0;
+        border-bottom: none;
+    }
+    .detail-row .value.code {
+        font-family: monospace;
+        font-size: 1.1rem;
+        color: var(--color-primary, #3b82f6);
+        letter-spacing: 0.05em;
+    }
+    .info-text {
+        font-size: 0.9rem;
+        margin: 1.5rem 0;
+    }
+    .btn {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        margin-top: 1rem;
+        transition: opacity 0.2s;
+    }
+    .btn-primary {
+        background: var(--color-primary, #3b82f6);
+        color: white;
+    }
+    .btn-secondary {
+        background: rgba(255,255,255,0.1);
+        color: var(--color-text-primary, #e2e8f0);
+    }
+</style>

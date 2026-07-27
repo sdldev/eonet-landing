@@ -1,0 +1,410 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:5000";
+const midtransClientKey = import.meta.env.PUBLIC_MIDTRANS_CLIENT_KEY ?? "";
+const midtransIsProduction = import.meta.env.PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
+const snapJsUrl = midtransIsProduction
+    ? "https://app.midtrans.com/snap/snap.js"
+    : "https://app.sandbox.midtrans.com/snap/snap.js";
+
+// Disable CSP for Midtrans Snap.js
+Astro.response.headers.delete("Content-Security-Policy");
+---
+
+<Layout title="Beli Voucher Hotspot — EONET">
+    <Header />
+    <main>
+        <section class="evoucher-section">
+            <div class="container">
+                <h1 class="page-title">Beli Voucher Hotspot</h1>
+                <p class="page-subtitle">Pilih paket voucher dan beli langsung secara online</p>
+
+                <!-- Template cards -->
+                <div id="templates-loading" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Memuat paket voucher...</p>
+                </div>
+                <div id="templates-error" class="error-state" style="display:none"></div>
+                <div id="templates-grid" class="templates-grid" style="display:none"></div>
+
+                <!-- Order form (hidden initially) -->
+                <div id="order-section" style="display:none">
+                    <div class="order-card">
+                        <h2>Formulir Pemesanan</h2>
+                        <div id="selected-template" class="selected-template"></div>
+                        <form id="order-form">
+                            <div class="form-group">
+                                <label for="customer_phone">Nomor WhatsApp <span class="required">*</span></label>
+                                <input type="tel" id="customer_phone" name="customer_phone" placeholder="08xxxxxxxxxx" required />
+                                <span class="field-error" id="error-phone"></span>
+                            </div>
+                            <div class="form-group">
+                                <label for="customer_name">Nama (opsional)</label>
+                                <input type="text" id="customer_name" name="customer_name" placeholder="Nama Anda" />
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" id="btn-back">Kembali</button>
+                                <button type="submit" class="btn btn-primary" id="btn-order">Pesan Sekarang</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Order result -->
+                <div id="result-section" style="display:none">
+                    <div class="result-card success">
+                        <div class="result-icon">✓</div>
+                        <h2>Pesanan Berhasil</h2>
+                        <div id="result-details"></div>
+                        <button class="btn btn-primary btn-lg" id="btn-pay">Bayar Sekarang</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <Footer />
+
+    <script is:inline define:vars={{ apiBase, midtransClientKey, snapJsUrl }}>
+        let selectedTemplate = null;
+
+        // Load templates
+        async function loadTemplates() {
+            try {
+                const res = await fetch(`${apiBase}/v1/public/evoucher/templates`);
+                if (!res.ok) throw new Error('Gagal memuat paket');
+                const json = await res.json();
+                const templates = json.data;
+
+                document.getElementById('templates-loading').style.display = 'none';
+
+                if (!templates || templates.length === 0) {
+                    document.getElementById('templates-error').textContent = 'Belum ada paket voucher tersedia.';
+                    document.getElementById('templates-error').style.display = 'block';
+                    return;
+                }
+
+                const grid = document.getElementById('templates-grid');
+                grid.innerHTML = templates.map(t => `
+                    <div class="template-card" data-template='${JSON.stringify(t)}'>
+                        <div class="template-header">
+                            <h3>${t.name}</h3>
+                            <span class="template-profile">${t.profile.name}</span>
+                        </div>
+                        <div class="template-body">
+                            <div class="template-price">Rp ${Number(t.price).toLocaleString('id-ID')}</div>
+                            <div class="template-duration">${t.duration_hours} jam</div>
+                            ${t.speed_tier ? `<div class="template-speed">${t.speed_tier}</div>` : ''}
+                        </div>
+                        <button class="btn btn-primary btn-sm">Pilih</button>
+                    </div>
+                `).join('');
+
+                grid.style.display = 'grid';
+
+                // Card click handlers
+                grid.querySelectorAll('.template-card').forEach(card => {
+                    card.querySelector('button').addEventListener('click', () => {
+                        selectedTemplate = JSON.parse(card.dataset.template);
+                        showOrderForm();
+                    });
+                });
+            } catch (err) {
+                document.getElementById('templates-loading').style.display = 'none';
+                const errEl = document.getElementById('templates-error');
+                errEl.textContent = err.message || 'Gagal memuat paket voucher.';
+                errEl.style.display = 'block';
+            }
+        }
+
+        function showOrderForm() {
+            document.getElementById('templates-grid').style.display = 'none';
+            document.getElementById('order-section').style.display = 'block';
+            document.getElementById('selected-template').innerHTML = `
+                <strong>${selectedTemplate.name}</strong> — ${selectedTemplate.duration_hours} jam<br/>
+                <span class="price">Rp ${Number(selectedTemplate.price).toLocaleString('id-ID')}</span>
+            `;
+        }
+
+        // Back button
+        document.getElementById('btn-back').addEventListener('click', () => {
+            document.getElementById('order-section').style.display = 'none';
+            document.getElementById('templates-grid').style.display = 'grid';
+            selectedTemplate = null;
+        });
+
+        // Order form submit
+        document.getElementById('order-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phone = document.getElementById('customer_phone').value.trim();
+            const name = document.getElementById('customer_name').value.trim();
+            const btn = document.getElementById('btn-order');
+            const errorEl = document.getElementById('error-phone');
+
+            errorEl.textContent = '';
+            if (!phone || phone.length < 6) {
+                errorEl.textContent = 'Nomor WhatsApp tidak valid';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Memproses...';
+
+            try {
+                const res = await fetch(`${apiBase}/v1/public/evoucher/order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        template_id: selectedTemplate.id,
+                        customer_phone: phone,
+                        customer_name: name || undefined,
+                    }),
+                });
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.message || 'Gagal membuat pesanan');
+
+                const order = json.data;
+                document.getElementById('order-section').style.display = 'none';
+                document.getElementById('result-section').style.display = 'block';
+                document.getElementById('result-details').innerHTML = `
+                    <p><strong>No. Pesanan:</strong> ${order.order_number}</p>
+                    <p><strong>Paket:</strong> ${selectedTemplate.name}</p>
+                    <p><strong>Total:</strong> Rp ${Number(order.amount).toLocaleString('id-ID')}</p>
+                `;
+
+                // Pay button
+                document.getElementById('btn-pay').addEventListener('click', async () => {
+                    const payBtn = document.getElementById('btn-pay');
+                    payBtn.disabled = true;
+                    payBtn.textContent = 'Memproses pembayaran...';
+
+                    try {
+                        const payRes = await fetch(`${apiBase}/v1/public/evoucher/order/${order.order_number}/pay`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ provider: 'midtrans' }),
+                        });
+                        const payJson = await payRes.json();
+                        if (!payRes.ok) throw new Error(payJson.message || 'Gagal membuat pembayaran');
+
+                        // Load Midtrans Snap
+                        if (!window.snap) {
+                            const script = document.createElement('script');
+                            script.src = snapJsUrl;
+                            script.setAttribute('data-client-key', midtransClientKey);
+                            document.head.appendChild(script);
+                            await new Promise(resolve => { script.onload = resolve; });
+                        }
+
+                        window.snap.pay(payJson.data.snap_token, {
+                            onSuccess: () => {
+                                window.location.href = `/evoucher/status?order=${order.order_number}`;
+                            },
+                            onPending: () => {
+                                window.location.href = `/evoucher/status?order=${order.order_number}`;
+                            },
+                            onError: () => {
+                                payBtn.disabled = false;
+                                payBtn.textContent = 'Bayar Sekarang';
+                                alert('Pembayaran gagal. Silakan coba lagi.');
+                            },
+                            onClose: () => {
+                                payBtn.disabled = false;
+                                payBtn.textContent = 'Bayar Sekarang';
+                            },
+                        });
+                    } catch (err) {
+                        payBtn.disabled = false;
+                        payBtn.textContent = 'Bayar Sekarang';
+                        alert(err.message || 'Gagal memproses pembayaran');
+                    }
+                });
+            } catch (err) {
+                errorEl.textContent = err.message || 'Gagal membuat pesanan';
+                btn.disabled = false;
+                btn.textContent = 'Pesan Sekarang';
+            }
+        });
+
+        loadTemplates();
+    </script>
+</Layout>
+
+<style>
+    .evoucher-section {
+        min-height: 70vh;
+        padding: 2rem 1rem;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .page-title {
+        text-align: center;
+        font-size: 2rem;
+        color: var(--color-text-primary, #e2e8f0);
+        margin-bottom: 0.5rem;
+    }
+    .page-subtitle {
+        text-align: center;
+        color: var(--color-text-secondary, #94a3b8);
+        margin-bottom: 2rem;
+    }
+    .loading-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--color-text-secondary, #94a3b8);
+    }
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: var(--color-primary, #3b82f6);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-state {
+        text-align: center;
+        padding: 2rem;
+        color: #f87171;
+        background: rgba(239,68,68,0.1);
+        border-radius: 8px;
+    }
+    .templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1rem;
+    }
+    .template-card {
+        background: var(--color-surface, #1e293b);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        transition: border-color 0.2s;
+    }
+    .template-card:hover {
+        border-color: var(--color-primary, #3b82f6);
+    }
+    .template-header h3 {
+        margin: 0;
+        color: var(--color-text-primary, #e2e8f0);
+        font-size: 1.1rem;
+    }
+    .template-profile {
+        font-size: 0.85rem;
+        color: var(--color-text-secondary, #94a3b8);
+    }
+    .template-price {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primary, #3b82f6);
+    }
+    .template-duration, .template-speed {
+        font-size: 0.9rem;
+        color: var(--color-text-secondary, #94a3b8);
+    }
+    .order-card, .result-card {
+        background: var(--color-surface, #1e293b);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    .order-card h2, .result-card h2 {
+        margin-top: 0;
+        color: var(--color-text-primary, #e2e8f0);
+    }
+    .selected-template {
+        background: rgba(59,130,246,0.1);
+        border: 1px solid rgba(59,130,246,0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        color: var(--color-text-primary, #e2e8f0);
+    }
+    .selected-template .price {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--color-primary, #3b82f6);
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.4rem;
+        color: var(--color-text-primary, #e2e8f0);
+        font-size: 0.9rem;
+    }
+    .required { color: #f87171; }
+    .form-group input {
+        width: 100%;
+        padding: 0.7rem 1rem;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 8px;
+        color: var(--color-text-primary, #e2e8f0);
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--color-primary, #3b82f6);
+    }
+    .field-error {
+        color: #f87171;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+        display: block;
+    }
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    .btn {
+        padding: 0.7rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        transition: opacity 0.2s;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+        background: var(--color-primary, #3b82f6);
+        color: white;
+    }
+    .btn-secondary {
+        background: rgba(255,255,255,0.1);
+        color: var(--color-text-primary, #e2e8f0);
+    }
+    .btn-lg { padding: 1rem 2rem; font-size: 1.1rem; width: 100%; }
+    .btn-sm { padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .result-card { text-align: center; }
+    .result-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(34,197,94,0.2);
+        color: #22c55e;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1rem;
+    }
+    .result-card p {
+        color: var(--color-text-secondary, #94a3b8);
+        margin: 0.3rem 0;
+    }
+</style>
