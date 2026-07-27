@@ -1,0 +1,156 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Footer from "../../components/Footer.astro";
+import CustomerNav from "../../components/CustomerNav.astro";
+import "../../styles/portal.css";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+const sessionCookie = Astro.cookies.get('eonet_customer_session')?.value;
+
+if (!sessionCookie) {
+  return Astro.redirect('/portal/login');
+}
+
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get('page') ?? '1', 10);
+const limit = 20;
+
+type Ticket = {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  priority: string;
+  status: string;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+  category?: { id: string; name: string } | null;
+  _count: { replies: number };
+};
+
+type TicketsResponse = {
+  tickets: Ticket[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+let tickets: Ticket[] = [];
+let total = 0;
+let errorMessage: string | null = null;
+
+try {
+  const res = await fetch(`${apiBase}/v1/customer/tickets?page=${page}&limit=${limit}`, {
+    headers: { Cookie: `eonet_customer_session=${sessionCookie}` },
+  });
+
+  if (res.ok) {
+    const json = await res.json();
+    const d = json.data ?? json;
+    tickets = d.tickets ?? d ?? [];
+    total = d.total ?? tickets.length;
+  } else if (res.status === 401) {
+    return Astro.redirect('/portal/login');
+  } else {
+    errorMessage = 'Gagal memuat tiket.';
+  }
+} catch {
+  errorMessage = 'Tidak dapat terhubung ke server.';
+}
+
+const totalPages = Math.ceil(total / limit);
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { open: 'Terbuka', in_progress: 'Diproses', waiting: 'Menunggu', resolved: 'Selesai', closed: 'Ditutup' };
+  return map[s] ?? s;
+}
+
+function priorityLabel(p: string) {
+  const map: Record<string, string> = { low: 'Rendah', normal: 'Normal', high: 'Tinggi', urgent: 'Mendesak' };
+  return map[p] ?? p;
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+---
+
+<Layout title="Tiket Saya — EONET">
+  <main class="portal-container">
+    <CustomerNav active="tickets" />
+    <div class="portal-content">
+      <div class="portal-header">
+        <h1>Tiket Saya</h1>
+        <a href="/portal/tickets/new" class="btn btn-primary">+ Tiket Baru</a>
+      </div>
+
+      {errorMessage && <div class="alert alert-error">{errorMessage}</div>}
+
+      {tickets.length === 0 && !errorMessage ? (
+        <div class="empty-state">
+          <p>Belum ada tiket. Buat tiket baru untuk menghubungi support.</p>
+        </div>
+      ) : (
+        <div class="table-responsive">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Subjek</th>
+                <th>Kategori</th>
+                <th>Status</th>
+                <th>Prioritas</th>
+                <th>Dibuat</th>
+                <th>Reply</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map((t) => (
+                <tr>
+                  <td><a href={`/portal/tickets/${t.id}`} class="mono-link">{t.ticketNumber}</a></td>
+                  <td><a href={`/portal/tickets/${t.id}`}>{t.subject}</a></td>
+                  <td>{t.category?.name ?? '-'}</td>
+                  <td><span class={`badge badge-${t.status}`}>{statusLabel(t.status)}</span></td>
+                  <td><span class={`badge badge-priority-${t.priority}`}>{priorityLabel(t.priority)}</span></td>
+                  <td>{formatDate(t.createdAt)}</td>
+                  <td>{t._count.replies}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div class="pagination">
+          {page > 1 && <a href={`/portal/tickets?page=${page - 1}`} class="btn btn-sm">← Sebelumnya</a>}
+          <span class="page-info">Halaman {page} dari {totalPages}</span>
+          {page < totalPages && <a href={`/portal/tickets?page=${page + 1}`} class="btn btn-sm">Selanjutnya →</a>}
+        </div>
+      )}
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .portal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .portal-header h1 { font-size: 1.5rem; font-weight: 700; }
+  .mono-link { font-family: monospace; font-size: 0.85rem; color: var(--color-primary, #3b82f6); text-decoration: none; }
+  .mono-link:hover { text-decoration: underline; }
+  .badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-open { background: #1e40af33; color: #60a5fa; }
+  .badge-in_progress { background: #854d0e33; color: #facc15; }
+  .badge-waiting { background: #9a341233; color: #fb923c; }
+  .badge-resolved { background: #16653433; color: #4ade80; }
+  .badge-closed { background: #37415133; color: #9ca3af; }
+  .badge-priority-low { background: #37415133; color: #9ca3af; }
+  .badge-priority-normal { background: #1e40af33; color: #60a5fa; }
+  .badge-priority-high { background: #9a341233; color: #fb923c; }
+  .badge-priority-urgent { background: #7f1d1d33; color: #f87171; }
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted, #9ca3af); }
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+  .page-info { font-size: 0.875rem; color: var(--text-muted, #9ca3af); }
+</style>

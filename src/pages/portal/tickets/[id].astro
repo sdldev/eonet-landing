@@ -1,0 +1,190 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Footer from "../../../components/Footer.astro";
+import CustomerNav from "../../../components/CustomerNav.astro";
+import "../../../styles/portal.css";
+
+export const prerender = false;
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "http://localhost:3000";
+const sessionCookie = Astro.cookies.get('eonet_customer_session')?.value;
+
+if (!sessionCookie) {
+  return Astro.redirect('/portal/login');
+}
+
+const { id } = Astro.params;
+
+type TicketReply = {
+  id: string;
+  body: string;
+  isInternal: boolean;
+  author: { id: string; fullName: string; role: string };
+  createdAt: string;
+};
+
+type Ticket = {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  description: string;
+  priority: string;
+  status: string;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+  category?: { id: string; name: string } | null;
+  replies: TicketReply[];
+};
+
+let ticket: Ticket | null = null;
+let errorMessage: string | null = null;
+let replyError: string | null = null;
+
+// Handle reply submission
+if (Astro.request.method === 'POST') {
+  try {
+    const formData = await Astro.request.formData();
+    const body = formData.get('body') as string;
+
+    if (body?.trim()) {
+      const res = await fetch(`${apiBase}/v1/customer/tickets/${id}/replies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: `eonet_customer_session=${sessionCookie}`,
+        },
+        body: JSON.stringify({ body }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) return Astro.redirect('/portal/login');
+        replyError = 'Gagal mengirim balasan.';
+      }
+    }
+  } catch {
+    replyError = 'Tidak dapat terhubung ke server.';
+  }
+}
+
+// Fetch ticket detail
+try {
+  const res = await fetch(`${apiBase}/v1/customer/tickets/${id}`, {
+    headers: { Cookie: `eonet_customer_session=${sessionCookie}` },
+  });
+
+  if (res.ok) {
+    const json = await res.json();
+    ticket = json.data ?? json;
+  } else if (res.status === 401) {
+    return Astro.redirect('/portal/login');
+  } else if (res.status === 404) {
+    errorMessage = 'Tiket tidak ditemukan.';
+  } else {
+    errorMessage = 'Gagal memuat tiket.';
+  }
+} catch {
+  errorMessage = 'Tidak dapat terhubung ke server.';
+}
+
+function statusLabel(s: string) {
+  const map: Record<string, string> = { open: 'Terbuka', in_progress: 'Diproses', waiting: 'Menunggu', resolved: 'Selesai', closed: 'Ditutup' };
+  return map[s] ?? s;
+}
+
+function priorityLabel(p: string) {
+  const map: Record<string, string> = { low: 'Rendah', normal: 'Normal', high: 'Tinggi', urgent: 'Mendesak' };
+  return map[p] ?? p;
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+---
+
+<Layout title={ticket ? `${ticket.ticketNumber} — EONET` : 'Tiket — EONET'}>
+  <main class="portal-container">
+    <CustomerNav active="tickets" />
+    <div class="portal-content">
+      <a href="/portal/tickets" class="back-link">← Kembali ke daftar tiket</a>
+
+      {errorMessage && <div class="alert alert-error">{errorMessage}</div>}
+      {replyError && <div class="alert alert-error">{replyError}</div>}
+
+      {ticket && (
+        <>
+          <div class="ticket-header">
+            <h1>{ticket.ticketNumber} — {ticket.subject}</h1>
+            <div class="badge-row">
+              <span class={`badge badge-${ticket.status}`}>{statusLabel(ticket.status)}</span>
+              <span class={`badge badge-priority-${ticket.priority}`}>{priorityLabel(ticket.priority)}</span>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-item"><span class="meta-label">Kategori</span><span>{ticket.category?.name ?? '-'}</span></div>
+            <div class="meta-item"><span class="meta-label">Dibuat</span><span>{formatDate(ticket.createdAt)}</span></div>
+            <div class="meta-item"><span class="meta-label">Update</span><span>{formatDate(ticket.updatedAt)}</span></div>
+          </div>
+
+          <div class="section">
+            <h3>Deskripsi</h3>
+            <p class="description">{ticket.description}</p>
+          </div>
+
+          <div class="section">
+            <h3>Diskusi ({ticket.replies.length})</h3>
+            {ticket.replies.map((reply) => (
+              <div class="reply-card">
+                <div class="reply-header">
+                  <strong>{reply.author.fullName}</strong>
+                  <span class="reply-date">{formatDate(reply.createdAt)}</span>
+                </div>
+                <p class="reply-body">{reply.body}</p>
+              </div>
+            ))}
+            {ticket.replies.length === 0 && <p class="text-muted">Belum ada balasan.</p>}
+
+            {ticket.status !== 'closed' && ticket.status !== 'resolved' && (
+              <form method="POST" class="reply-form">
+                <textarea name="body" class="form-input" rows="3" placeholder="Tulis balasan..." required />
+                <button type="submit" class="btn btn-primary">Kirim</button>
+              </form>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  .back-link { color: var(--text-muted, #9ca3af); text-decoration: none; font-size: 0.875rem; display: inline-block; margin-bottom: 1rem; }
+  .back-link:hover { color: var(--text, #fff); }
+  .ticket-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+  .ticket-header h1 { font-size: 1.25rem; font-weight: 700; }
+  .badge-row { display: flex; gap: 0.5rem; }
+  .badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-open { background: #1e40af33; color: #60a5fa; }
+  .badge-in_progress { background: #854d0e33; color: #facc15; }
+  .badge-waiting { background: #9a341233; color: #fb923c; }
+  .badge-resolved { background: #16653433; color: #4ade80; }
+  .badge-closed { background: #37415133; color: #9ca3af; }
+  .badge-priority-low { background: #37415133; color: #9ca3af; }
+  .badge-priority-normal { background: #1e40af33; color: #60a5fa; }
+  .badge-priority-high { background: #9a341233; color: #fb923c; }
+  .badge-priority-urgent { background: #7f1d1d33; color: #f87171; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--surface, #1a1a2e); border-radius: 8px; }
+  .meta-label { display: block; font-size: 0.75rem; color: var(--text-muted, #9ca3af); text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem; }
+  .section { margin-bottom: 2rem; }
+  .section h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
+  .description { padding: 1rem; background: var(--surface, #1a1a2e); border-radius: 8px; white-space: pre-wrap; }
+  .reply-card { padding: 1rem; background: var(--surface, #1a1a2e); border-radius: 8px; margin-bottom: 0.75rem; }
+  .reply-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; }
+  .reply-date { color: var(--text-muted, #9ca3af); }
+  .reply-body { white-space: pre-wrap; }
+  .text-muted { color: var(--text-muted, #9ca3af); }
+  .reply-form { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-end; }
+  .form-input { width: 100%; padding: 0.5rem 0.75rem; background: var(--bg, #111); border: 1px solid var(--border, #333); border-radius: 6px; color: var(--text, #fff); font-size: 0.9rem; }
+</style>
