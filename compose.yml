@@ -1,0 +1,6 @@
+services:
+  landing:
+    image: ${LANDING_IMAGE:-ghcr.io/sdldev/eonet-landing}:${LANDING_IMAGE_TAG:-latest}
+    ports:
+      - "127.0.0.1:4321:4321"
+    restart: unless-stopped

@@ -43,3 +43,36 @@ Run `npm run build` before Wrangler dry-run so Astro generates `dist/server/wran
 ## 👀 Want to learn more?
 
 Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+
+## Docker images
+
+Backend dipublish sebagai image dari satu Dockerfile.
+
+### Build lokal
+
+Gunakan script `scripts/build-images.sh` untuk build image lokal:
+
+```bash
+# Build + save ke .tar.gz
+./scripts/build-images.sh
+
+# Build + push ke registry
+DOCKER_REGISTRY=ghcr.io/sdldev ./scripts/build-images.sh --push
+```
+
+### Docker Compose
+
+Compose memakai layout base + override:
+
+- `compose.yml` — base service definition.
+- `compose.local.yml` — pakai image lokal (tanpa GHCR).
+
+Deploy dengan image lokal:
+
+```bash
+# Build image lokal
+./scripts/build-images.sh
+
+# Deploy
+docker compose -f compose.yml -f compose.local.yml up -d
+```

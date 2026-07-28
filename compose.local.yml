@@ -1,0 +1,13 @@
+# compose.local.yml — local image overlay (tanpa GHCR)
+#
+# Jalankan: docker compose -f compose.yml -f compose.local.yml up -d
+# Images harus sudah di-build: ./scripts/build-images.sh
+
+name: eonet-landing
+
+services:
+  landing:
+    image: eonet-landing:latest
+    ports:
+      - "${PORT:-4321}:4321"
+    restart: unless-stopped
